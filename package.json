@@ -1,0 +1,23 @@
+{
+  "name": "go-shortener",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:apply:local": "wrangler d1 execute go_shortener --local --file=./schema.sql",
+    "db:apply:remote": "wrangler d1 execute go_shortener --remote --file=./schema.sql",
+    "db:migrate:link-behaviors:local": "wrangler d1 migrations apply go_shortener --local",
+    "db:migrate:link-behaviors:remote": "wrangler d1 migrations apply go_shortener --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260612.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "qrcode-generator": "2.0.4"
+  }
+}

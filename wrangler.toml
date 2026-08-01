@@ -1,0 +1,16 @@
+name = "go-shortener"
+main = "src/index.ts"
+compatibility_date = "2026-06-12"
+workers_dev = false
+preview_urls = false
+
+[vars]
+TURNSTILE_SITE_KEY = "0x4AAAAAADjGLLK2kLzklZSk"
+
+[secrets]
+required = ["TURNSTILE_SECRET_KEY"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "go_shortener"
+database_id = "4ba0bc48-b5f8-4d19-ba4d-23e02339d04b"
