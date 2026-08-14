@@ -6,9 +6,10 @@ preview_urls = false
 
 [vars]
 TURNSTILE_SITE_KEY = "0x4AAAAAADjGLLK2kLzklZSk"
+TURNSTILE_HOSTNAMES = "go.snkisk.com"
 
 [secrets]
-required = ["TURNSTILE_SECRET_KEY"]
+required = ["TURNSTILE_SECRET"]
 
 [[d1_databases]]
 binding = "DB"

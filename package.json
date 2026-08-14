@@ -13,9 +13,9 @@
     "db:migrate:link-behaviors:remote": "wrangler d1 migrations apply go_shortener --remote"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260612.0",
+    "@cloudflare/workers-types": "^5.20260811.1",
     "typescript": "^5.0.0",
-    "wrangler": "^4.0.0"
+    "wrangler": "4.123.0"
   },
   "dependencies": {
     "qrcode-generator": "2.0.4"

@@ -20,4 +20,4 @@
 
 ## 公開について
 
-このリポジトリは `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET_KEY` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
+このリポジトリは `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
