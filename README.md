@@ -24,7 +24,7 @@
 
 ## 管理ダッシュボード
 
-`/admin/` と `/api/admin/*` は Cloudflare Access の別アプリケーションとして保護します。Worker でも Access の `Cf-Access-Jwt-Assertion` を署名・issuer・AUD まで検証するため、デプロイ前に次の Worker Secret を設定してください。
+`/admin/` と `/api/admin/*` は、両方の宛先を含む Cloudflare Access アプリケーションで保護します。Worker でも Access の `Cf-Access-Jwt-Assertion` を署名・issuer・AUD まで検証するため、デプロイ前に次の Worker Secret を設定してください。
 
 - `ACCESS_TEAM_DOMAIN`: `<team>.cloudflareaccess.com`
 - `ACCESS_ADMIN_AUDS`: `/admin/*` と `/api/admin/*` を保護する Access アプリケーションの AUDをカンマ区切りで指定

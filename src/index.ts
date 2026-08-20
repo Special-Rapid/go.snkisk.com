@@ -352,10 +352,20 @@ function adminLinkState(link: { deleted_at: string | null; admin_paused_at?: str
   return "有効";
 }
 
-async function getAdminLinkList(env: Env, query = ""): Promise<AdminLinkSummary[]> {
+type AdminLinkFilter = "all" | "active" | "unpublished" | "expired" | "limited" | "paused" | "deleted";
+function parseAdminLinkFilter(value: string | null): AdminLinkFilter { return ["active", "unpublished", "expired", "limited", "paused", "deleted"].includes(value ?? "") ? value as AdminLinkFilter : "all"; }
+async function getAdminLinkList(env: Env, query = "", filter: AdminLinkFilter = "all"): Promise<AdminLinkSummary[]> {
   const value = query.trim().slice(0, 120);
-  const where = value ? "WHERE l.slug LIKE ? OR l.target_url LIKE ?" : "";
-  const statement = env.DB.prepare(`SELECT l.id,l.slug,l.target_url,l.max_open_count,l.open_count,l.unlock_at,l.expires_at,l.created_at,l.updated_at,l.deleted_at,l.admin_paused_at,COUNT(e.id) AS entry_count FROM links l LEFT JOIN audience_entries e ON e.parent_link_id=l.id AND e.deleted_at IS NULL ${where} GROUP BY l.id ORDER BY COALESCE(l.updated_at,l.created_at) DESC,l.id DESC LIMIT 200`);
+  const filters: Record<Exclude<AdminLinkFilter, "all">, string> = {
+    active: "l.deleted_at IS NULL AND l.admin_paused_at IS NULL AND (l.expires_at IS NULL OR julianday(l.expires_at)>julianday('now')) AND (l.unlock_at IS NULL OR julianday(l.unlock_at)<=julianday('now')) AND (l.max_open_count IS NULL OR l.open_count<l.max_open_count)",
+    unpublished: "l.deleted_at IS NULL AND l.admin_paused_at IS NULL AND (l.expires_at IS NULL OR julianday(l.expires_at)>julianday('now')) AND l.unlock_at IS NOT NULL AND julianday(l.unlock_at)>julianday('now')",
+    expired: "l.deleted_at IS NULL AND l.admin_paused_at IS NULL AND l.expires_at IS NOT NULL AND julianday(l.expires_at)<=julianday('now')",
+    limited: "l.deleted_at IS NULL AND l.admin_paused_at IS NULL AND (l.expires_at IS NULL OR julianday(l.expires_at)>julianday('now')) AND (l.unlock_at IS NULL OR julianday(l.unlock_at)<=julianday('now')) AND l.max_open_count IS NOT NULL AND l.open_count>=l.max_open_count",
+    paused: "l.deleted_at IS NULL AND l.admin_paused_at IS NOT NULL",
+    deleted: "l.deleted_at IS NOT NULL",
+  };
+  const clauses = [value ? "(l.slug LIKE ? OR l.target_url LIKE ?)" : "", filter === "all" ? "" : filters[filter]].filter(Boolean);
+  const statement = env.DB.prepare(`SELECT l.id,l.slug,l.target_url,l.max_open_count,l.open_count,l.unlock_at,l.expires_at,l.created_at,l.updated_at,l.deleted_at,l.admin_paused_at,COUNT(e.id) AS entry_count FROM links l LEFT JOIN audience_entries e ON e.parent_link_id=l.id AND e.deleted_at IS NULL ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""} GROUP BY l.id ORDER BY COALESCE(l.updated_at,l.created_at) DESC,l.id DESC LIMIT 200`);
   const result = value ? await statement.bind(`%${value}%`, `%${value}%`).all<AdminLinkSummary>() : await statement.all<AdminLinkSummary>();
   return result.results;
 }
@@ -378,21 +388,35 @@ async function renderAdminDashboard(env: Env): Promise<Response> {
 }
 
 async function renderAdminLinks(env: Env, url: URL): Promise<Response> {
-  const query = url.searchParams.get("q") ?? ""; const notice = url.searchParams.get("notice"); const links = await getAdminLinkList(env, query);
+  const query = url.searchParams.get("q") ?? ""; const filter = parseAdminLinkFilter(url.searchParams.get("state")); const notice = url.searchParams.get("notice"); const links = await getAdminLinkList(env, query, filter);
   const rows = links.map((link) => {
     const usage = link.max_open_count === null ? "無制限" : `${link.open_count} / ${link.max_open_count}`;
     return `<tr><td><a href="/admin/links/${encodeURIComponent(link.slug)}">/${escapeHtml(link.slug)}</a></td><td>${escapeHtml(link.target_url)}</td><td>${escapeHtml(adminLinkState(link))}</td><td>${link.entry_count}</td><td>${escapeHtml(usage)}</td><td>${escapeHtml(renderLocalDateTime(link.updated_at ?? link.created_at))}</td></tr>`;
   }).join("") || "<tr><td colspan=\"6\">該当するリンクはありません。</td></tr>";
-  return renderLayout("管理リンク一覧", `<section class="card"><p><a href="/admin/">管理ダッシュボード</a></p><h1>リンク一覧</h1>${notice ? `<p class="success">${escapeHtml(notice)}</p>` : ""}<form method="GET" action="/admin/links"><label for="q">短縮パス・転送先URLを検索</label><input id="q" type="search" name="q" value="${escapeHtml(query)}" maxlength="120"><button type="submit">検索</button></form><div style="overflow-x:auto"><table><thead><tr><th>短縮パス</th><th>転送先</th><th>状態</th><th>入口</th><th>利用状況</th><th>更新</th></tr></thead><tbody>${rows}</tbody></table></div></section>`);
+  const option = (value: AdminLinkFilter, label: string) => `<option value="${value}"${filter === value ? " selected" : ""}>${label}</option>`;
+  return renderLayout("管理リンク一覧", `<section class="card"><p><a href="/admin/">管理ダッシュボード</a></p><h1>リンク一覧</h1>${notice ? `<p class="success">${escapeHtml(notice)}</p>` : ""}<form method="GET" action="/admin/links"><label for="q">短縮パス・転送先URLを検索</label><input id="q" type="search" name="q" value="${escapeHtml(query)}" maxlength="120"><label for="state">状態</label><select id="state" name="state">${option("all", "すべて")}${option("active", "有効")}${option("unpublished", "公開前")}${option("expired", "期限切れ")}${option("limited", "上限到達")}${option("paused", "強制停止中")}${option("deleted", "削除済み")}</select><button type="submit">絞り込む</button></form><div style="overflow-x:auto"><table><thead><tr><th>短縮パス</th><th>転送先</th><th>状態</th><th>入口</th><th>利用状況</th><th>更新</th></tr></thead><tbody>${rows}</tbody></table></div></section>`);
+}
+
+function forceConfirmation(value: string, label: string): string { return `<label class="check"><input type="checkbox" name="confirm" value="${escapeHtml(value)}" required><span>${escapeHtml(label)}</span></label>`; }
+
+function renderAdminLinkEdit(request: Request, link: Link, error?: string): Response {
+  const action = `/admin/links/${encodeURIComponent(link.slug)}/edit`;
+  const form = `<form method="POST" action="${action}"><label for="target_url">現在の転送先URL</label><input id="target_url" type="url" name="target_url" value="${escapeHtml(link.target_url)}" required maxlength="2048"><label for="slug">短縮パス</label>${slugInput("slug", link.slug, "slug")}<fieldset class="mode-picker"><legend>利用回数の上限（任意）</legend><label for="max_open_count">利用回数の上限</label><input id="max_open_count" type="number" name="max_open_count" value="${link.max_open_count ?? ""}" min="1" max="${MAX_OPEN_COUNT}" step="1" inputmode="numeric" placeholder="未入力なら無制限"><label class="check"><input id="limit_reached_target_enabled" type="checkbox" name="limit_reached_target_enabled" value="1" ${link.limit_reached_target_url ? "checked" : ""}><span>上限到達後に別のURLへ転送する</span></label><label for="limit_reached_target_url">上限到達後の転送先URL</label><input id="limit_reached_target_url" type="url" name="limit_reached_target_url" value="${escapeHtml(link.limit_reached_target_url ?? "")}" maxlength="2048"></fieldset><fieldset class="mode-picker"><legend>公開時の条件</legend><label for="scheduled_target_url">切替後の転送先URL</label><input id="scheduled_target_url" type="url" name="scheduled_target_url" value="${escapeHtml(link.scheduled_target_url ?? "")}" maxlength="2048"><label for="switch_at">切替日時</label>${localDatetimeInput("switch_at", "switch_at", link.switch_at)}<label for="unlock_at">公開開始日時</label>${localDatetimeInput("unlock_at", "unlock_at", link.unlock_at)}<label for="passphrase">新しい合言葉</label>${passphraseInput("passphrase", "new-password")}<label class="check"><input type="checkbox" name="clear_passphrase" value="1"><span>現在の合言葉を解除する</span></label></fieldset>${renderExpiryFields(link)}${renderTerminalMessageFields(link)}${renderPreviewFields(link)}${forceConfirmation("edit", "すべてのリンク設定を強制更新することを確認しました。")}<button type="submit">設定を強制更新</button></form>`;
+  return renderLayout("リンク設定を強制編集", `<section class="card"><p><a href="/admin/links/${encodeURIComponent(link.slug)}">リンク詳細に戻る</a></p><h1>/${escapeHtml(link.slug)} を強制編集</h1>${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<p class="warning">通常の管理URLを持つ人の設定も上書きされ、利用回数は0にリセットされます。</p>${form}</section>`);
+}
+
+function renderAdminAudienceEdit(request: Request, link: Link, entry: AudienceEntry, error?: string): Response {
+  const scheduleActive = isScheduledTargetConfigured(link.scheduled_target_url, link.switch_at);
+  return renderLayout("入口を強制編集", `<section class="card"><p><a href="/admin/links/${encodeURIComponent(link.slug)}">リンク詳細に戻る</a></p><h1>/${escapeHtml(entry.slug)} を強制編集</h1>${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<p class="warning">この入口の表示・期限・SNSプレビューを強制更新します。</p><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/entries/${entry.id}/edit">${renderAudienceFields(entry, `admin_${entry.id}`, scheduleActive)}${forceConfirmation("entry-edit", "入口設定を強制更新することを確認しました。")}<button type="submit">入口を強制更新</button></form></section>`);
 }
 
 async function renderAdminLinkDetail(request: Request, env: Env, link: Link): Promise<Response> {
   const notice = new URL(request.url).searchParams.get("notice"); const entries = await getAudienceEntries(env, link.id);
   const state = link.deleted_at ? "削除済み" : link.admin_paused_at ? "強制停止中" : adminLinkState(link);
   const origin = getOrigin(request);
-  const actions = link.deleted_at ? "<p class=\"warning\">このリンクは強制削除済みです。短縮パスは再利用できません。</p>" : `<section class="card"><h2>強制操作</h2><p class="warning">これらの操作は既存の管理URLを持つ人にも影響します。操作は90日間記録されます。</p><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/destination"><label for="target_url">転送先URLを強制更新</label><input id="target_url" name="target_url" type="url" value="${escapeHtml(link.target_url)}" required maxlength="${MAX_TARGET_URL_LENGTH}"><button type="submit">転送先を更新</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/${link.admin_paused_at ? "resume" : "pause"}"><button type="submit" class="${link.admin_paused_at ? "secondary" : "danger"}">${link.admin_paused_at ? "リンクを再開" : "リンクを強制停止"}</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/reset-usage"><button type="submit" class="secondary">利用回数をリセット</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/rotate-manage-key"><button type="submit" class="secondary">管理URLを再発行して旧URLを無効化</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/delete"><button type="submit" class="danger">リンクを強制削除</button></form></section>`;
-  const entryRows = entries.length ? entries.map((entry) => `<li>/${escapeHtml(entry.slug)} — ${escapeHtml(entry.label)} <form style="display:inline" method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/entries/${entry.id}/delete"><button type="submit" class="danger">強制削除</button></form></li>`).join("") : "<li>入口はありません。</li>";
-  return renderLayout("管理リンク詳細", `<section class="card"><p><a href="/admin/links">リンク一覧</a></p><h1>/${escapeHtml(link.slug)}</h1>${notice ? `<p class="success">${escapeHtml(notice)}</p>` : ""}<dl class="meta"><div><dt>状態</dt><dd>${escapeHtml(state)}</dd></div><div><dt>転送先</dt><dd><a href="${escapeHtml(link.target_url)}" rel="noreferrer">${escapeHtml(link.target_url)}</a></dd></div><div><dt>作成日時</dt><dd>${escapeHtml(renderLocalDateTime(link.created_at))}</dd></div><div><dt>更新日時</dt><dd>${escapeHtml(renderLocalDateTime(link.updated_at ?? link.created_at))}</dd></div></dl>${copyField("公開URL", `${origin}/${link.slug}`)}${renderLinkMeta(link)}<p class="hint">完全な条件編集が必要な場合は、ここで管理URLを再発行してから、そのURLで既存の管理画面を開いてください。</p></section>${actions}<section class="card"><h2>相手別入口</h2><ul>${entryRows}</ul></section>`);
+  const actions = link.deleted_at ? "<p class=\"warning\">このリンクは強制削除済みです。短縮パスは再利用できません。</p>" : `<section class="card"><h2>強制操作</h2><p class="warning">これらの操作は既存の管理URLを持つ人にも影響します。操作は90日間記録されます。</p><p><a class="button" href="/admin/links/${encodeURIComponent(link.slug)}/edit">すべての設定を強制編集</a></p><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/destination"><label for="target_url">転送先URLを強制更新</label><input id="target_url" name="target_url" type="url" value="${escapeHtml(link.target_url)}" required maxlength="${MAX_TARGET_URL_LENGTH}">${forceConfirmation("destination", "転送先を強制更新することを確認しました。")}<button type="submit">転送先を更新</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/${link.admin_paused_at ? "resume" : "pause"}">${forceConfirmation(link.admin_paused_at ? "resume" : "pause", link.admin_paused_at ? "リンクを再開することを確認しました。" : "リンクを強制停止することを確認しました。")}<button type="submit" class="${link.admin_paused_at ? "secondary" : "danger"}">${link.admin_paused_at ? "リンクを再開" : "リンクを強制停止"}</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/reset-usage">${forceConfirmation("reset-usage", "利用回数をリセットすることを確認しました。")}<button type="submit" class="secondary">利用回数をリセット</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/rotate-manage-key">${forceConfirmation("rotate-manage-key", "現在の管理URLを無効化して再発行することを確認しました。")}<button type="submit" class="secondary">管理URLを再発行して旧URLを無効化</button></form><form method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/delete">${forceConfirmation("delete", "リンクを論理削除し、短縮パスを永久に予約することを確認しました。")}<button type="submit" class="danger">リンクを強制削除</button></form></section>`;
+  const entryRows = entries.length ? entries.map((entry) => `<li>/${escapeHtml(entry.slug)} — ${escapeHtml(entry.label)} <a href="/admin/links/${encodeURIComponent(link.slug)}/entries/${entry.id}/edit">強制編集</a> <form style="display:inline" method="POST" action="/admin/links/${encodeURIComponent(link.slug)}/entries/${entry.id}/delete">${forceConfirmation("entry-delete", "入口を強制削除することを確認しました。")}<button type="submit" class="danger">強制削除</button></form></li>`).join("") : "<li>入口はありません。</li>";
+  return renderLayout("管理リンク詳細", `<section class="card"><p><a href="/admin/links">リンク一覧</a></p><h1>/${escapeHtml(link.slug)}</h1>${notice ? `<p class="success">${escapeHtml(notice)}</p>` : ""}<dl class="meta"><div><dt>状態</dt><dd>${escapeHtml(state)}</dd></div><div><dt>転送先</dt><dd><a href="${escapeHtml(link.target_url)}" rel="noreferrer">${escapeHtml(link.target_url)}</a></dd></div><div><dt>作成日時</dt><dd>${escapeHtml(renderLocalDateTime(link.created_at))}</dd></div><div><dt>更新日時</dt><dd>${escapeHtml(renderLocalDateTime(link.updated_at ?? link.created_at))}</dd></div></dl>${copyField("公開URL", `${origin}/${link.slug}`)}${renderLinkMeta(link)}</section>${actions}<section class="card"><h2>相手別入口</h2><ul>${entryRows}</ul></section>`);
 }
 
 function renderAdminManageKeyRotated(request: Request, slug: string, manageKey: string): Response {
@@ -558,11 +582,25 @@ async function handleAdminRequest(request: Request, env: Env, path: string, admi
       return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(link.slug)}?notice=${encodeURIComponent("リンクを作成しました。")}`);
     } catch (error) { if (error instanceof SlugUnavailableError) return renderHome(request, env, "この短縮パスはすでに使われています。", { createAction: "/admin/new", requiresTurnstile: false, title: "管理者として短縮URLを作成" }); throw error; }
   }
-  const actionRoute = /^\/admin\/links\/([^/]+)\/(pause|resume|delete|reset-usage|rotate-manage-key|destination)$/.exec(path);
+  const actionRoute = /^\/admin\/links\/([^/]+)\/(edit|pause|resume|delete|reset-usage|rotate-manage-key|destination)$/.exec(path);
   if (actionRoute) {
     const rejected = requireAdminMutation(request); if (rejected) return rejected;
-    const slug = safeDecode(actionRoute[1]); const action = actionRoute[2]; const link = await getAdminLinkBySlug(env, slug);
+    const slug = safeDecode(actionRoute[1]); const action = actionRoute[2]; const form = await request.formData(); const link = await getAdminLinkBySlug(env, slug);
     if (!link) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。");
+    if (getFormText(form, "confirm") !== action) return renderErrorPage(400, "Bad Request", "確認チェックを入れてから実行してください。");
+    if (action === "edit") {
+      if (link.deleted_at) return renderErrorPage(409, "Conflict", "削除済みリンクは更新できません。");
+      const parsed = await parseLinkValues(form, request, false); if ("error" in parsed) return renderAdminLinkEdit(request, link, parsed.error);
+      const clearPassphrase = form.get("clear_passphrase") === "1"; const rawPassphrase = getFormText(form, "passphrase");
+      if (clearPassphrase && rawPassphrase) return renderAdminLinkEdit(request, link, "合言葉の変更と解除を同時には行えません。");
+      const passphrase = clearPassphrase ? null : (parsed.values.passphrase ?? (link.passphrase_hash ? { salt: link.passphrase_salt!, hash: link.passphrase_hash, iterations: link.passphrase_iterations! } : null));
+      try {
+        const updateLink = env.DB.prepare(`UPDATE links SET slug=?,target_url=?,one_time=?,used_at=NULL,max_open_count=?,open_count=0,limit_reached_target_url=?,scheduled_target_url=?,switch_at=?,unlock_at=?,expires_at=?,ended_message=?,receipt_required=?,receipt_confirmed_at=NULL,passphrase_salt=?,passphrase_hash=?,passphrase_iterations=?,share_card_enabled=?,share_card_title=?,share_card_description=?,preview_mode=?,og_title=?,og_description=?,og_image_url=?,state_version=state_version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND deleted_at IS NULL`).bind(parsed.values.slug, parsed.values.targetUrl, parsed.values.maxOpenCount === 1 ? 1 : 0, parsed.values.maxOpenCount, parsed.values.limitReachedTargetUrl, parsed.values.scheduledTargetUrl, parsed.values.switchAt, parsed.values.unlockAt, parsed.values.expiresAt, parsed.values.endedMessage, parsed.values.receiptRequired ? 1 : 0, passphrase?.salt ?? null, passphrase?.hash ?? null, passphrase?.iterations ?? null, parsed.values.shareCardEnabled ? 1 : 0, parsed.values.shareCardTitle, parsed.values.shareCardDescription, parsed.values.previewMode, parsed.values.ogTitle, parsed.values.ogDescription, parsed.values.ogImageUrl, link.id);
+        if (isScheduledTargetConfigured(parsed.values.scheduledTargetUrl, parsed.values.switchAt)) await env.DB.batch([updateLink, env.DB.prepare("UPDATE audience_entries SET preview_mode='none',og_title=NULL,og_description=NULL,og_image_url=NULL,state_version=state_version+1,updated_at=CURRENT_TIMESTAMP WHERE parent_link_id=? AND deleted_at IS NULL").bind(link.id)]); else await updateLink.run();
+      } catch (error) { if (isUniqueConstraintError(error)) return renderAdminLinkEdit(request, link, "この短縮パスはすでに使われています。"); throw error; }
+      const updated = await getAdminLinkBySlug(env, parsed.values.slug!); if (!updated) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。");
+      await writeAdminAudit(env, admin, "link.update_settings", updated); return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(updated.slug)}?notice=${encodeURIComponent("リンク設定を強制更新しました。")}`);
+    }
     if (action === "pause") {
       if (link.deleted_at) return renderErrorPage(409, "Conflict", "削除済みリンクは停止できません。");
       await env.DB.prepare("UPDATE links SET admin_paused_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=? AND admin_paused_at IS NULL").bind(link.id).run();
@@ -587,19 +625,32 @@ async function handleAdminRequest(request: Request, env: Env, path: string, admi
       const manageKey = generateManageKey(); await env.DB.prepare("UPDATE links SET manage_key=?,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=?").bind(manageKey, link.id).run();
       await writeAdminAudit(env, admin, "link.rotate_manage_key", link); return renderAdminManageKeyRotated(request, link.slug, manageKey);
     }
-    const form = await request.formData(); const target = isValidTargetUrl(getFormText(form, "target_url").trim(), new URL(request.url));
+    const target = isValidTargetUrl(getFormText(form, "target_url").trim(), new URL(request.url));
     if (!target.ok || link.deleted_at) return renderErrorPage(400, "Bad Request", "有効な転送先URLを入力してください。");
     await env.DB.prepare("UPDATE links SET target_url=?,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=?").bind(target.url, link.id).run();
     await writeAdminAudit(env, admin, "link.update_destination", link); return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(link.slug)}?notice=${encodeURIComponent("転送先URLを強制更新しました。")}`);
   }
-  const entryDelete = /^\/admin\/links\/([^/]+)\/entries\/(\d+)\/delete$/.exec(path);
-  if (entryDelete) {
+  const entryRoute = /^\/admin\/links\/([^/]+)\/entries\/(\d+)\/(edit|delete)$/.exec(path);
+  if (entryRoute && request.method === "POST") {
     const rejected = requireAdminMutation(request); if (rejected) return rejected;
-    const link = await getAdminLinkBySlug(env, safeDecode(entryDelete[1])); if (!link) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。");
-    const entryId = Number(entryDelete[2]); const result = await env.DB.prepare("UPDATE audience_entries SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=? AND parent_link_id=? AND deleted_at IS NULL").bind(entryId, link.id).run();
+    const link = await getAdminLinkBySlug(env, safeDecode(entryRoute[1])); if (!link) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。");
+    const entryId = Number(entryRoute[2]); const action = entryRoute[3]; const entry = await getAudienceEntry(env, link.id, entryId); if (!entry) return renderErrorPage(404, "Not Found", "この入口は存在しません。");
+    const form = await request.formData(); if (getFormText(form, "confirm") !== `entry-${action}`) return renderErrorPage(400, "Bad Request", "確認チェックを入れてから実行してください。");
+    if (action === "edit") {
+      if (link.deleted_at) return renderErrorPage(409, "Conflict", "削除済みリンクの入口は更新できません。");
+      const parsed = await parseAudienceValues(form, request, link.target_url, isScheduledTargetConfigured(link.scheduled_target_url, link.switch_at)); if ("error" in parsed) return renderAdminAudienceEdit(request, link, entry, parsed.error);
+      const v = parsed.values;
+      try { await env.DB.prepare(`UPDATE audience_entries SET slug=?,label=?,expires_at=?,ended_message=?,share_card_enabled=?,share_card_title=?,share_card_description=?,preview_mode=?,og_title=?,og_description=?,og_image_url=?,state_version=state_version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND parent_link_id=? AND deleted_at IS NULL`).bind(v.slug,v.label,v.expiresAt,v.endedMessage,v.shareCardEnabled?1:0,v.shareCardTitle,v.shareCardDescription,v.previewMode,v.ogTitle,v.ogDescription,v.ogImageUrl,entry.id,link.id).run(); } catch (error) { if (isUniqueConstraintError(error)) return renderAdminAudienceEdit(request, link, entry, "この短縮パスはすでに使われています。"); throw error; }
+      await writeAdminAudit(env, admin, "entry.update", link, String(entry.id)); return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(link.slug)}?notice=${encodeURIComponent("入口を強制更新しました。")}`);
+    }
+    const result = await env.DB.prepare("UPDATE audience_entries SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=? AND parent_link_id=? AND deleted_at IS NULL").bind(entryId, link.id).run();
     if (!result.meta.changes) return renderErrorPage(404, "Not Found", "この入口は存在しません。");
     await writeAdminAudit(env, admin, "entry.delete", link, String(entryId)); return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(link.slug)}?notice=${encodeURIComponent("入口を強制削除しました。")}`);
   }
+  const entryEditRoute = /^\/admin\/links\/([^/]+)\/entries\/(\d+)\/edit$/.exec(path);
+  if (request.method === "GET" && entryEditRoute) { const link = await getAdminLinkBySlug(env, safeDecode(entryEditRoute[1])); const entry = link ? await getAudienceEntry(env, link.id, Number(entryEditRoute[2])) : null; return link && entry ? renderAdminAudienceEdit(request, link, entry) : renderErrorPage(404, "Not Found", "この入口は存在しません。"); }
+  const editRoute = /^\/admin\/links\/([^/]+)\/edit$/.exec(path);
+  if (request.method === "GET" && editRoute) { const link = await getAdminLinkBySlug(env, safeDecode(editRoute[1])); return link ? renderAdminLinkEdit(request, link) : renderErrorPage(404, "Not Found", "この短縮URLは存在しません。"); }
   const detailRoute = /^\/admin\/links\/([^/]+)$/.exec(path);
   if (request.method === "GET" && detailRoute) { const link = await getAdminLinkBySlug(env, safeDecode(detailRoute[1])); return link ? renderAdminLinkDetail(request, env, link) : renderErrorPage(404, "Not Found", "この短縮URLは存在しません。"); }
   return renderErrorPage(404, "Not Found", "このページは存在しません。");
