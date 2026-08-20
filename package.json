@@ -18,6 +18,7 @@
     "wrangler": "4.123.0"
   },
   "dependencies": {
+    "jose": "^6.2.9",
     "qrcode-generator": "2.0.4"
   }
 }

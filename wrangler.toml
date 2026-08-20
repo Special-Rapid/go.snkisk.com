@@ -9,7 +9,10 @@ TURNSTILE_SITE_KEY = "0x4AAAAAADjGLLK2kLzklZSk"
 TURNSTILE_HOSTNAMES = "go.snkisk.com"
 
 [secrets]
-required = ["TURNSTILE_SECRET"]
+required = ["TURNSTILE_SECRET", "ACCESS_TEAM_DOMAIN", "ACCESS_ADMIN_AUDS"]
+
+[[triggers.crons]]
+cron = "0 3 * * *"
 
 [[d1_databases]]
 binding = "DB"

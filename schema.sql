@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS links (
   state_version INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT,
-  deleted_at TEXT
+  deleted_at TEXT,
+  admin_paused_at TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_links_slug ON links(slug);
@@ -37,6 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_links_deleted_at ON links(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_links_switch_at ON links(switch_at);
 CREATE INDEX IF NOT EXISTS idx_links_unlock_at ON links(unlock_at);
 CREATE INDEX IF NOT EXISTS idx_links_expires_at ON links(expires_at);
+CREATE INDEX IF NOT EXISTS idx_links_admin_paused_at ON links(admin_paused_at);
 
 CREATE TABLE IF NOT EXISTS issued_slugs (
   slug TEXT PRIMARY KEY,
@@ -100,6 +102,20 @@ CREATE TABLE IF NOT EXISTS audience_entries (
 CREATE INDEX IF NOT EXISTS idx_audience_entries_parent ON audience_entries(parent_link_id);
 CREATE INDEX IF NOT EXISTS idx_audience_entries_slug ON audience_entries(slug);
 CREATE INDEX IF NOT EXISTS idx_audience_entries_expires_at ON audience_entries(expires_at);
+
+CREATE TABLE IF NOT EXISTS admin_audit_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_subject TEXT NOT NULL,
+  actor_email TEXT,
+  action TEXT NOT NULL,
+  link_id INTEGER,
+  link_slug TEXT,
+  detail TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_events_created_at ON admin_audit_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_events_link_id ON admin_audit_events(link_id);
 
 CREATE TRIGGER IF NOT EXISTS reject_reissued_audience_slug_on_insert
 BEFORE INSERT ON audience_entries

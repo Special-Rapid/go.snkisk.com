@@ -21,3 +21,12 @@
 ## 公開について
 
 このリポジトリは `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
+
+## 管理ダッシュボード
+
+`/admin/` と `/api/admin/*` は Cloudflare Access の別アプリケーションとして保護します。Worker でも Access の `Cf-Access-Jwt-Assertion` を署名・issuer・AUD まで検証するため、デプロイ前に次の Worker Secret を設定してください。
+
+- `ACCESS_TEAM_DOMAIN`: `<team>.cloudflareaccess.com`
+- `ACCESS_ADMIN_AUDS`: `/admin/*` と `/api/admin/*` を保護する Access アプリケーションの AUDをカンマ区切りで指定
+
+管理者の強制操作は `admin_audit_events` に90日間記録し、日次Cronで期限切れの記録を削除します。リンクの削除は論理削除で、短縮パスは再利用できません。アクセス履歴・IPアドレス・User-Agentは保存しません。
