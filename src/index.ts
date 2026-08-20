@@ -75,7 +75,8 @@ export default {
       if (path.startsWith("/admin/") || path.startsWith("/api/admin/")) {
         const admin = await requireAdmin(request, env);
         if (admin instanceof Response) return admin;
-        return handleAdminRequest(request, env, path, admin);
+        const response = await handleAdminRequest(request, env, path, admin);
+        return request.method === "GET" ? withAdminCsrfCookie(response) : response;
       }
       if (request.method === "GET" && path === "/") return handleHome(request, env);
       if (request.method === "GET" && path === "/assets/share-preview-amber-waves.jpg") return new Response(SHARE_PREVIEW_AMBER_WAVES, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
@@ -551,6 +552,13 @@ async function requireAdmin(request: Request, env: Env): Promise<AdminIdentity |
   }
 }
 
+function withAdminCsrfCookie(response: Response): Response {
+  if (!response.headers.get("Content-Type")?.startsWith("text/html")) return response;
+  const headers = new Headers(response.headers);
+  headers.append("Set-Cookie", `go_admin_csrf=${base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))}; Path=/admin; Max-Age=86400; Secure; HttpOnly; SameSite=Strict`);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function requireAdminMutation(request: Request): Response | null {
   if (request.method !== "POST") return renderErrorPage(405, "Method Not Allowed", "この操作は許可されていません。", "POST");
   const origin = request.headers.get("Origin");
@@ -561,7 +569,7 @@ function requireAdminMutation(request: Request): Response | null {
     } catch { /* Invalid Origin values are rejected below. */ }
     return renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
   }
-  if (request.headers.get("Sec-Fetch-Site") === "same-origin" && request.headers.get("Sec-Fetch-Mode") === "navigate") return null;
+  if (parseCookies(request.headers.get("Cookie")).has("go_admin_csrf")) return null;
   return renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
 }
 
