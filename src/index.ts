@@ -554,9 +554,8 @@ async function requireAdmin(request: Request, env: Env): Promise<AdminIdentity |
 
 function withAdminCsrfCookie(response: Response): Response {
   if (!response.headers.get("Content-Type")?.startsWith("text/html")) return response;
-  const headers = new Headers(response.headers);
-  headers.append("Set-Cookie", `go_admin_csrf=${base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))}; Path=/admin; Max-Age=86400; Secure; HttpOnly; SameSite=Strict`);
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  response.headers.append("Set-Cookie", `go_admin_csrf=${base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))}; Path=/admin; Max-Age=86400; Secure; HttpOnly; SameSite=Strict`);
+  return response;
 }
 
 function requireAdminMutation(request: Request): Response | null {
