@@ -553,7 +553,16 @@ async function requireAdmin(request: Request, env: Env): Promise<AdminIdentity |
 
 function requireAdminMutation(request: Request): Response | null {
   if (request.method !== "POST") return renderErrorPage(405, "Method Not Allowed", "この操作は許可されていません。", "POST");
-  return request.headers.get("Origin") === getOrigin(request) ? null : renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
+  const origin = request.headers.get("Origin");
+  if (origin) {
+    try {
+      const expected = new URL(request.url); const supplied = new URL(origin);
+      return supplied.protocol === "https:" && supplied.host === expected.host ? null : renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
+    } catch { /* Invalid Origin values are rejected below. */ }
+    return renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
+  }
+  if (request.headers.get("Sec-Fetch-Site") === "same-origin" && request.headers.get("Sec-Fetch-Mode") === "navigate") return null;
+  return renderErrorPage(403, "Forbidden", "この操作は許可されていません。");
 }
 
 async function writeAdminAudit(env: Env, admin: AdminIdentity, action: string, link: Link | null, detail: string | null = null): Promise<void> {
