@@ -1,7 +1,7 @@
 const SERVICE_ORIGIN = "https://go.snkisk.com";
 const copy = {
-  ja: { loading: "短縮URLを作成中…", sourceLabel: "短縮するURL", shortLabel: "短縮URL", copy: "コピー", copied: "コピーしました", retry: "このURLで作り直す", manage: "管理URLを開く", downloadQr: "QRコードを保存", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "QRコードを保存できませんでした。", invalid: "このページのURLは短縮できません。URLを入力して作り直してください。", failed: "作成できませんでした。もう一度お試しください。", verifying: "安全確認中…", light: "ライトテーマ", system: "システムテーマ", dark: "ダークテーマ" },
-  en: { loading: "Creating your short URL…", sourceLabel: "URL to shorten", shortLabel: "Short URL", copy: "Copy", copied: "Copied", retry: "Create again with this URL", manage: "Open management URL", downloadQr: "Save QR code", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "Could not save the QR code.", invalid: "This page cannot be shortened. Enter a URL and try again.", failed: "Could not create the short URL. Please try again.", verifying: "Verifying…", light: "Light theme", system: "System theme", dark: "Dark theme" },
+  ja: { loading: "短縮URLを作成中…", sourceLabel: "短縮するURL", shortLabel: "短縮URL", copy: "コピー", copied: "コピーしました", retry: "このURLで作り直す", configure: "go.snkisk.comで詳細に設定する", manage: "管理URLを開く", downloadQr: "QRコードを保存", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "QRコードを保存できませんでした。", invalid: "このページのURLは短縮できません。URLを入力して作り直してください。", failed: "作成できませんでした。もう一度お試しください。", verifying: "安全確認中…", light: "ライトテーマ", system: "システムテーマ", dark: "ダークテーマ" },
+  en: { loading: "Creating your short URL…", sourceLabel: "URL to shorten", shortLabel: "Short URL", copy: "Copy", copied: "Copied", retry: "Create again with this URL", configure: "Configure on go.snkisk.com", manage: "Open management URL", downloadQr: "Save QR code", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "Could not save the QR code.", invalid: "This page cannot be shortened. Enter a URL and try again.", failed: "Could not create the short URL. Please try again.", verifying: "Verifying…", light: "Light theme", system: "System theme", dark: "Dark theme" },
 };
 let locale = "ja";
 let theme = "system";
@@ -18,6 +18,7 @@ const copyButton = document.querySelector("#copy");
 const retry = document.querySelector("#retry");
 const bridge = document.querySelector("#bridge");
 const qr = document.querySelector("#qr");
+const configure = document.querySelector("#configure");
 const manage = document.querySelector("#manage");
 const downloadButtons = [...document.querySelectorAll("[data-qr-download]")];
 const text = (key) => copy[locale][key];
@@ -74,6 +75,9 @@ async function showCreated(payload) {
   qrSvg = payload.qrSvg;
   qr.src = `data:image/svg+xml,${encodeURIComponent(qrSvg)}`;
   qr.alt = locale === "en" ? "QR code for the romanized short URL" : "ローマ字の短縮URLを開くQRコード";
+  const configureUrl = new URL("/", SERVICE_ORIGIN);
+  configureUrl.searchParams.set("target_url", pendingUrl);
+  configure.href = configureUrl.href;
   manage.href = typeof payload.manageUrl === "string" ? payload.manageUrl : "#";
   await savePreferences({ [`manage:${payload.shortUrl}`]: payload.manageUrl });
   setStatus(""); result.hidden = false;
