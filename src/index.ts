@@ -4,8 +4,18 @@ import qrcode from "qrcode-generator";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const SERVICE_HOST = "go.snkisk.com";
+const EXTENSION_ORIGIN = "chrome-extension://jgbmdlhafngmkkbdfkankelhdjjcdgfk";
 const BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const SLUG_LENGTH = 7;
+const JAPANESE_SLUG_WORDS = [
+  { romaji: "ao", hiragana: "あお", katakana: "アオ", kanji: "青" }, { romaji: "aka", hiragana: "あか", katakana: "アカ", kanji: "赤" }, { romaji: "asa", hiragana: "あさ", katakana: "アサ", kanji: "朝" }, { romaji: "hana", hiragana: "はな", katakana: "ハナ", kanji: "花" },
+  { romaji: "haru", hiragana: "はる", katakana: "ハル", kanji: "春" }, { romaji: "hikari", hiragana: "ひかり", katakana: "ヒカリ", kanji: "光" }, { romaji: "hoshi", hiragana: "ほし", katakana: "ホシ", kanji: "星" }, { romaji: "kaze", hiragana: "かぜ", katakana: "カゼ", kanji: "風" },
+  { romaji: "kiri", hiragana: "きり", katakana: "キリ", kanji: "霧" }, { romaji: "mori", hiragana: "もり", katakana: "モリ", kanji: "森" }, { romaji: "natsu", hiragana: "なつ", katakana: "ナツ", kanji: "夏" }, { romaji: "sakura", hiragana: "さくら", katakana: "サクラ", kanji: "桜" },
+  { romaji: "sora", hiragana: "そら", katakana: "ソラ", kanji: "空" }, { romaji: "shiro", hiragana: "しろ", katakana: "シロ", kanji: "白" }, { romaji: "tsuki", hiragana: "つき", katakana: "ツキ", kanji: "月" }, { romaji: "umi", hiragana: "うみ", katakana: "ウミ", kanji: "海" },
+  { romaji: "yama", hiragana: "やま", katakana: "ヤマ", kanji: "山" }, { romaji: "yuki", hiragana: "ゆき", katakana: "ユキ", kanji: "雪" }, { romaji: "niji", hiragana: "にじ", katakana: "ニジ", kanji: "虹" }, { romaji: "hotaru", hiragana: "ほたる", katakana: "ホタル", kanji: "蛍" },
+  { romaji: "neko", hiragana: "ねこ", katakana: "ネコ", kanji: "猫" }, { romaji: "tori", hiragana: "とり", katakana: "トリ", kanji: "鳥" }, { romaji: "kitsune", hiragana: "きつね", katakana: "キツネ", kanji: "狐" }, { romaji: "kawa", hiragana: "かわ", katakana: "カワ", kanji: "川" },
+  { romaji: "mizu", hiragana: "みず", katakana: "ミズ", kanji: "水" }, { romaji: "take", hiragana: "たけ", katakana: "タケ", kanji: "竹" }, { romaji: "ume", hiragana: "うめ", katakana: "ウメ", kanji: "梅" }, { romaji: "ringo", hiragana: "りんご", katakana: "リンゴ", kanji: "林檎" },
+] as const;
 const MANAGE_KEY_BYTES = 32;
 const MAX_SLUG_ATTEMPTS = 10;
 const MAX_TARGET_URL_LENGTH = 2048;
@@ -59,6 +69,7 @@ interface PublicTarget { link: Link; entry: AudienceEntry | null; slug: string; 
 
 interface PassphraseRecord { salt: string; hash: string; iterations: number; }
 type DestinationKind = "primary" | "scheduled";
+type SlugStyle = "random" | "words-ja";
 type PreviewMode = "none" | "target_og" | "custom" | "target_url";
 interface OgSnapshot { title: string | null; description: string | null; imageUrl: string | null; }
 type TurnstileVerifyResponse = { success?: boolean; "error-codes"?: string[]; hostname?: string; action?: string; };
@@ -79,6 +90,7 @@ export default {
       }
       if (request.method === "GET" && path === "/") return handleHome(request, env);
       if (request.method === "GET" && path === "/assets/share-preview-amber-waves.jpg") return new Response(SHARE_PREVIEW_AMBER_WAVES, { headers: { "content-type": "image/jpeg", "cache-control": "public, max-age=31536000, immutable" } });
+      if (path === "/extension/create") return request.method === "GET" ? renderExtensionCreate(env) : request.method === "POST" ? handleExtensionCreate(request, env) : renderErrorPage(405, "Method Not Allowed", "この操作は許可されていません。", "GET, POST");
       if (request.method === "POST" && path === "/create") return handleCreate(request, env);
       if (request.method === "GET" && path === "/api/slug-availability") return handleSlugAvailability(request, env);
       const usageRoute = /^\/api\/manage\/([^/]+)\/usage$/.exec(path);
@@ -126,10 +138,17 @@ function generateRandomString(length: number, alphabet = BASE62): string {
   const bytes = new Uint8Array(length); crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
+function randomWord<T>(words: readonly T[]): T { return words[crypto.getRandomValues(new Uint32Array(1))[0] % words.length]; }
 function generateSlug(): string { return generateRandomString(SLUG_LENGTH); }
+type SpokenSlugSet = Record<"romaji" | "hiragana" | "katakana" | "kanji", string>;
+function generateSpokenSlugSet(): SpokenSlugSet {
+  const first = randomWord(JAPANESE_SLUG_WORDS); let second = randomWord(JAPANESE_SLUG_WORDS);
+  while (second === first) second = randomWord(JAPANESE_SLUG_WORDS);
+  return { romaji: `${first.romaji}-${second.romaji}`, hiragana: `${first.hiragana}-${second.hiragana}`, katakana: `${first.katakana}-${second.katakana}`, kanji: `${first.kanji}-${second.kanji}` };
+}
 function generateManageKey(): string { return base64UrlEncode(crypto.getRandomValues(new Uint8Array(MANAGE_KEY_BYTES))); }
 function isReservedSlug(slug: string): boolean { return RESERVED_SLUGS.has(slug.toLowerCase()); }
-function isValidSlug(slug: string): boolean { return /^[a-zA-Z0-9_-]{1,64}$/.test(slug) && !isReservedSlug(slug); }
+function isValidSlug(slug: string): boolean { return /^[\p{L}\p{N}_-]{1,64}$/u.test(slug) && !isReservedSlug(slug); }
 function normalizeSlugInput(value: string): string { return value.trim().replace(/^\/+/, ""); }
 function escapeHtml(value: string): string { return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"); }
 function escapeUserTextForI18n(value: string): string { return Array.from(value, (character) => `<span data-no-i18n>${escapeHtml(character)}</span>`).join(""); }
@@ -395,10 +414,11 @@ function renderHome(_request: Request, env: Env, error?: string, options: { crea
   const rules = `<section class="rule-preview" aria-live="polite"><style>.create-studio .rule-preview{display:grid;align-content:start;gap:16px}.create-studio .rule-preview>h2{font-size:1.06rem}.create-studio .rule-preview>p{margin:0;color:#b8b2aa;font-size:.9rem;line-height:1.65}.create-studio .rule-current{display:grid;gap:14px;padding:22px;border:1px solid #5b4938;border-radius:10px;background:#171816}.create-studio .rule-current .eyebrow{margin:0;color:#c8c2b9;font-size:.78rem}.create-studio .rule-current-outcome{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:16px}.create-studio .rule-current-arrow{display:grid;place-items:center;width:54px;height:54px;border:2px solid #f58209;border-radius:50%;color:#f58209;font-size:2.25rem;line-height:1}.create-studio .rule-current strong{display:block;color:#f3f1ed;font-size:clamp(1.35rem,2.2vw,1.85rem);line-height:1.2}.create-studio .rule-current.is-ready strong{color:#f39a14}.create-studio .rule-current p:not(.eyebrow){margin:8px 0 0;color:#c8c2b9;font-size:.9rem;line-height:1.55;overflow-wrap:anywhere}.create-studio .rule-conditions{display:grid;gap:10px}.create-studio .rule-conditions>h3{margin:0;font-size:1.02rem}.create-studio .rule-conditions>p{margin:0;color:#b8b2aa;font-size:.88rem;line-height:1.55}.create-studio .rule-conditions ol{position:relative;display:grid;gap:0;margin:2px 0 0;padding:0;list-style:none;border:1px solid #3c3a35;border-radius:10px;background:#171816;overflow:hidden}.create-studio .rule-conditions li{display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px;align-items:center;min-height:72px;margin:0;padding:14px 16px;border:0;border-bottom:1px solid #393732;border-radius:0;background:transparent}.create-studio .rule-conditions li:last-child{border-bottom:0}.create-studio .rule-conditions li>b{width:34px;height:34px;border:1px solid #6a6056;border-radius:50%;background:#242421;color:#e7d6bf;font-size:1rem}.create-studio .rule-conditions li div{display:grid;gap:4px}.create-studio .rule-conditions li strong{font-size:1rem}.create-studio .rule-conditions li span{color:#c8c2b9;font-size:.88rem;line-height:1.45;overflow-wrap:anywhere}.create-studio .rule-note{padding:0!important;background:transparent!important;color:#aaa69e!important;font-size:.84rem!important}@media(max-width:560px){.create-studio .rule-current{padding:18px}.create-studio .rule-current-outcome{grid-template-columns:46px minmax(0,1fr);gap:12px}.create-studio .rule-current-arrow{width:44px;height:44px;font-size:1.8rem}.create-studio .rule-current strong{font-size:1.25rem}.create-studio .rule-conditions li{grid-template-columns:34px minmax(0,1fr);gap:10px;padding:13px}.create-studio .rule-conditions li>b{width:30px;height:30px}}</style><h2>動作ルール</h2><p>このリンクがクリックされたときの動作を設定できます。</p><section class="rule-current" data-rule-current><p class="eyebrow">現在の動作</p><div class="rule-current-outcome"><span class="rule-current-arrow" aria-hidden="true">→</span><div><strong data-rule-current-title>転送先URLを入力してください</strong><p data-rule-default>転送先URLを入力すると、ここに現在の動作を表示します。</p></div></div></section><section class="rule-conditions" data-rule-conditions hidden><h3>動作を変える条件</h3><p>条件が一致した場合だけ、上から順に優先されます。</p><ol><li data-rule-condition="expiry" hidden><b>1</b><div><strong>有効期限</strong><span data-rule-expiry></span></div></li><li data-rule-condition="access" hidden><b>2</b><div><strong>利用開始・合言葉</strong><span data-rule-access></span></div></li><li data-rule-condition="limit" hidden><b>3</b><div><strong>回数制限</strong><span data-rule-limit></span></div></li><li data-rule-condition="schedule" hidden><b>4</b><div><strong>日時による切替</strong><span data-rule-schedule></span></div></li></ol></section><p class="rule-note">設定済みの条件だけを表示します。条件は上から順に判定されます。</p></section>`;
   const title = options.title ?? "短縮URLを作成";
   const lead = options.lead ?? "";
-  return renderLayout(title, `<section class="create-studio"><div class="create-pane"><p class="eyebrow">${options.createAction ? "管理ダッシュボード" : ""}</p><h1>${escapeHtml(title)}</h1>${lead ? `<p class="lead">${escapeHtml(lead)}</p>` : ""}${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<form class="create-form" method="POST" action="${escapeHtml(createAction)}">${templates}<section class="create-basics"><label for="target_url">最初の転送先URL</label><input id="target_url" type="url" name="target_url" placeholder="https://example.com/a" required maxlength="2048" autocomplete="url"><label for="custom_slug">短縮パス</label>${slugInput("custom_slug", "", "custom_slug")}<p class="hint">英数字、ハイフン、アンダースコア。未入力なら自動生成します。</p></section>${renderCreateDetails()}${settingInfoScript}${settingInfoLocaleRefreshScript}${createPreviewLocaleScript}${createStateScript}${createRuleLocaleScript}${createRuleHeadingLocaleScript}<section class="short-url"><h2>作成される短縮URL</h2><output data-preview-short-url>${SERVICE_HOST}/…</output><p class="validation" data-create-validation>転送先URLと短縮パスを確認してください</p></section>${turnstile}<button type="submit" data-create-submit>短縮URLを作成</button></form></div><aside class="preview-pane">${rules}<p class="note">アクセス履歴・IPアドレス・User-Agentは保存しません。利用回数制限を設定した場合のみ、累計利用回数を保持します。</p></aside></section>`, 200, Boolean(turnstile));
+  return renderLayout(title, `<section class="create-studio"><div class="create-pane"><p class="eyebrow">${options.createAction ? "管理ダッシュボード" : ""}</p><h1>${escapeHtml(title)}</h1>${lead ? `<p class="lead">${escapeHtml(lead)}</p>` : ""}${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<form class="create-form" method="POST" action="${escapeHtml(createAction)}">${templates}<section class="create-basics"><label for="target_url">最初の転送先URL</label><input id="target_url" type="url" name="target_url" placeholder="https://example.com/a" required maxlength="2048" autocomplete="url"><label for="custom_slug">短縮パス</label>${slugInput("custom_slug", "", "custom_slug")}<p class="hint">英数字・日本語・ハイフン・アンダースコア。未入力なら下の形式で自動生成します。</p><label class="check"><input type="checkbox" name="word_slug_enabled" value="1"> ランダムな日本語の単語2つでURLを発行する</label><p class="hint">ローマ字・ひらがな・カタカナ・漢字の4種類を同時に発行します。すべて同じ設定を共有します。</p></section>${renderCreateDetails()}${settingInfoScript}${settingInfoLocaleRefreshScript}${createPreviewLocaleScript}${createStateScript}${createRuleLocaleScript}${createRuleHeadingLocaleScript}<section class="short-url"><h2>作成される短縮URL</h2><output data-preview-short-url>${SERVICE_HOST}/…</output><p class="validation" data-create-validation>転送先URLと短縮パスを確認してください</p></section>${turnstile}<button type="submit" data-create-submit>短縮URLを作成</button></form></div><aside class="preview-pane">${rules}<p class="note">アクセス履歴・IPアドレス・User-Agentは保存しません。利用回数制限を設定した場合のみ、累計利用回数を保持します。</p></aside></section>`, 200, Boolean(turnstile));
 }
-function renderCreatedPage(shortUrl: string, manageUrl: string, link: Link): Response {
-  return renderLayout("短縮URLを作成しました", `<section class="card"><h1>短縮URLを作成しました</h1>${copyField("短縮URL", shortUrl)}<div class="qr">${qrImage(shortUrl)}</div>${copyField("管理URL", manageUrl)}${renderLinkMeta(link)}<p class="warning">管理URLを知っている人はリンクを編集・削除できます。公開しないでください。</p><p><a class="button secondary" href="/">トップに戻る</a></p></section>`);
+function renderCreatedPage(shortUrl: string, manageUrl: string, link: Link, alternateUrls: readonly (readonly [string, string])[] = []): Response {
+  const spokenUrls = alternateUrls.length ? `<section class="card-subsection"><h2>同じリンクの表記違い</h2><p>すべて同じ転送先・期限・利用回数を共有します。</p>${alternateUrls.map(([label, url]) => copyField(label, url)).join("")}</section>` : "";
+  return renderLayout("短縮URLを作成しました", `<section class="card"><h1>短縮URLを作成しました</h1>${copyField("短縮URL（ローマ字）", shortUrl)}<div class="qr">${qrImage(shortUrl)}</div><p class="hint">QRコードはローマ字URLを開きます。</p>${spokenUrls}${copyField("管理URL", manageUrl)}${renderLinkMeta(link)}<p class="warning">管理URLを知っている人はリンクを編集・削除できます。公開しないでください。</p><p><a class="button secondary" href="/">トップに戻る</a></p></section>`);
 }
 
 interface AdminLinkSummary {
@@ -554,14 +574,14 @@ async function verifyTurnstile(token: string | null, request: Request, env: Env)
 }
 async function createPassphraseRecord(passphrase: string): Promise<PassphraseRecord> { const salt = crypto.getRandomValues(new Uint8Array(16)); const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveBits"]); const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: PASSPHRASE_ITERATIONS }, key, 256); return { salt: base64UrlEncode(salt), hash: base64UrlEncode(new Uint8Array(bits)), iterations: PASSPHRASE_ITERATIONS }; }
 async function matchesPassphrase(link: Link, passphrase: string): Promise<boolean> { if (!link.passphrase_hash || !link.passphrase_salt || !link.passphrase_iterations) return false; const salt = base64UrlDecode(link.passphrase_salt); const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveBits"]); const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: link.passphrase_iterations }, key, 256); return timingSafeStringEqual(base64UrlEncode(new Uint8Array(bits)), link.passphrase_hash); }
-async function createLink(env: Env, values: CreateValues, initialAudience: AudienceValues | null): Promise<Link> {
+function audienceInsertStatement(env: Env, audience: AudienceValues, parentSlug: string, manageKey: string): D1PreparedStatement {
+  return env.DB.prepare(`INSERT INTO audience_entries (parent_link_id,slug,label,expires_at,ended_message,share_card_enabled,share_card_title,share_card_description,preview_mode,og_title,og_description,og_image_url) SELECT id,?,?,?,?,?,?,?,?,?,?,? FROM links WHERE slug=? AND manage_key=? AND deleted_at IS NULL`).bind(audience.slug, audience.label, audience.expiresAt, audience.endedMessage, audience.shareCardEnabled ? 1 : 0, audience.shareCardTitle, audience.shareCardDescription, audience.previewMode, audience.ogTitle, audience.ogDescription, audience.ogImageUrl, parentSlug, manageKey);
+}
+async function createLink(env: Env, values: CreateValues, initialAudiences: AudienceValues[] = []): Promise<Link> {
   const manageKey = generateManageKey();
   const insert = async (slug: string): Promise<Link> => {
-    if (initialAudience) {
-      await env.DB.batch([
-        linkInsertStatement(env, slug, manageKey, values),
-        env.DB.prepare(`INSERT INTO audience_entries (parent_link_id,slug,label,expires_at,ended_message,share_card_enabled,share_card_title,share_card_description,preview_mode,og_title,og_description,og_image_url) SELECT id,?,?,?,?,?,?,?,?,?,?,? FROM links WHERE slug=? AND manage_key=? AND deleted_at IS NULL`).bind(initialAudience.slug, initialAudience.label, initialAudience.expiresAt, initialAudience.endedMessage, initialAudience.shareCardEnabled ? 1 : 0, initialAudience.shareCardTitle, initialAudience.shareCardDescription, initialAudience.previewMode, initialAudience.ogTitle, initialAudience.ogDescription, initialAudience.ogImageUrl, slug, manageKey),
-      ]);
+    if (initialAudiences.length) {
+      await env.DB.batch([linkInsertStatement(env, slug, manageKey, values), ...initialAudiences.map((audience) => audienceInsertStatement(env, audience, slug, manageKey))]);
     } else {
       await linkInsertStatement(env, slug, manageKey, values).run();
     }
@@ -574,12 +594,30 @@ async function createLink(env: Env, values: CreateValues, initialAudience: Audie
     const slug = generateSlug();
     try { return await insert(slug); } catch (error) {
       if (!isUniqueConstraintError(error)) throw error;
-      if (initialAudience && await isIssuedSlug(env, initialAudience.slug)) throw new SlugUnavailableError();
+      if (initialAudiences.length && await Promise.all(initialAudiences.map((audience) => isIssuedSlug(env, audience.slug))).then((issued) => issued.some(Boolean))) throw new SlugUnavailableError();
     }
   }
   throw new SlugUnavailableError();
 }
-interface CreateValues { slug?: string; targetUrl: string; maxOpenCount: number | null; limitReachedTargetUrl: string | null; scheduledTargetUrl: string | null; switchAt: string | null; unlockAt: string | null; expiresAt: string | null; endedMessage: string | null; receiptRequired: boolean; passphrase: PassphraseRecord | null; shareCardEnabled: boolean; shareCardTitle: string | null; shareCardDescription: string | null; previewMode?: PreviewMode; ogTitle?: string | null; ogDescription?: string | null; ogImageUrl?: string | null; }
+function spokenAudienceEntries(slugs: SpokenSlugSet): AudienceValues[] {
+  return [
+    ["hiragana", "ひらがな"], ["katakana", "カタカナ"], ["kanji", "漢字"],
+  ].map(([notation, label]) => ({ slug: slugs[notation as keyof SpokenSlugSet], label: `${label}表記`, expiresAt: null, endedMessage: null, shareCardEnabled: false, shareCardTitle: null, shareCardDescription: null, previewMode: "none", ogTitle: null, ogDescription: null, ogImageUrl: null }));
+}
+interface CreatedLink { link: Link; spokenSlugs: SpokenSlugSet | null; }
+async function createConfiguredLink(env: Env, values: CreateValues, initialAudiences: AudienceValues[] = []): Promise<CreatedLink> {
+  if (values.slugStyle !== "words-ja") return { link: await createLink(env, values, initialAudiences), spokenSlugs: null };
+  if (values.slug) throw new Error("Word slugs cannot be combined with a custom slug");
+  for (let attempt = 0; attempt < MAX_SLUG_ATTEMPTS; attempt += 1) {
+    const spokenSlugs = generateSpokenSlugSet();
+    try {
+      const link = await createLink(env, { ...values, slug: spokenSlugs.romaji, slugStyle: "random" }, [...initialAudiences, ...spokenAudienceEntries(spokenSlugs)]);
+      return { link, spokenSlugs };
+    } catch (error) { if (!(error instanceof SlugUnavailableError)) throw error; }
+  }
+  throw new SlugUnavailableError();
+}
+interface CreateValues { slug?: string; slugStyle: SlugStyle; targetUrl: string; maxOpenCount: number | null; limitReachedTargetUrl: string | null; scheduledTargetUrl: string | null; switchAt: string | null; unlockAt: string | null; expiresAt: string | null; endedMessage: string | null; receiptRequired: boolean; passphrase: PassphraseRecord | null; shareCardEnabled: boolean; shareCardTitle: string | null; shareCardDescription: string | null; previewMode?: PreviewMode; ogTitle?: string | null; ogDescription?: string | null; ogImageUrl?: string | null; }
 function linkInsertStatement(env: Env, slug: string, manageKey: string, values: CreateValues): D1PreparedStatement { return env.DB.prepare(`INSERT INTO links (slug,target_url,manage_key,one_time,max_open_count,open_count,limit_reached_target_url,scheduled_target_url,switch_at,unlock_at,expires_at,ended_message,receipt_required,passphrase_salt,passphrase_hash,passphrase_iterations,share_card_enabled,share_card_title,share_card_description,preview_mode,og_title,og_description,og_image_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(slug, values.targetUrl, manageKey, values.maxOpenCount === 1 ? 1 : 0, values.maxOpenCount, 0, values.limitReachedTargetUrl, values.scheduledTargetUrl, values.switchAt, values.unlockAt, values.expiresAt, values.endedMessage, values.receiptRequired ? 1 : 0, values.passphrase?.salt ?? null, values.passphrase?.hash ?? null, values.passphrase?.iterations ?? null, values.shareCardEnabled ? 1 : 0, values.shareCardTitle, values.shareCardDescription, values.previewMode ?? "none", values.ogTitle ?? null, values.ogDescription ?? null, values.ogImageUrl ?? null); }
 async function isIssuedSlug(env: Env, slug: string): Promise<boolean> { return Boolean(await env.DB.prepare("SELECT 1 FROM issued_slugs WHERE slug=? LIMIT 1").bind(slug).first()); }
 async function getLinkBySlug(env: Env, slug: string): Promise<Link | null> { return env.DB.prepare(`SELECT id,slug,target_url,manage_key,one_time,used_at,max_open_count,open_count,limit_reached_target_url,scheduled_target_url,switch_at,unlock_at,expires_at,ended_message,receipt_required,receipt_confirmed_at,passphrase_salt,passphrase_hash,passphrase_iterations,share_card_enabled,share_card_title,share_card_description,preview_mode,og_title,og_description,og_image_url,state_version,created_at,updated_at,deleted_at,admin_paused_at FROM links WHERE slug=? AND deleted_at IS NULL AND admin_paused_at IS NULL LIMIT 1`).bind(slug).first<Link>(); }
@@ -595,6 +633,20 @@ async function getAudiencePublicTarget(env: Env, slug: string): Promise<PublicTa
   return { link, entry, slug };
 }
 
+function renderExtensionCreate(env: Env): Response {
+  const turnstile = env.TURNSTILE_SITE_KEY ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><div class="cf-turnstile" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}" data-action="${TURNSTILE_ACTION}" data-size="invisible" data-callback="goExtensionTurnstile" data-expired-callback="goExtensionTurnstileError" data-error-callback="goExtensionTurnstileError"></div>` : "";
+  const document = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:13px system-ui,sans-serif;color:#4c3926;background:transparent}.cf-turnstile{min-height:65px}.message{margin:0 0 8px}</style></head><body><p class="message" aria-live="polite">安全確認中…</p>${turnstile}<script>(()=>{let targetUrl="";const extensionOrigin=${JSON.stringify(EXTENSION_ORIGIN)},tell=(type,detail={})=>parent.postMessage({source:"go-extension-create",type,...detail},extensionOrigin);window.goExtensionTurnstile=token=>{if(targetUrl&&typeof token==="string")tell("token",{targetUrl,turnstileToken:token})};window.goExtensionTurnstileError=()=>tell("error",{message:"安全確認を完了できませんでした。"});window.addEventListener("message",event=>{if(event.origin!==extensionOrigin||event.source!==parent||!event.data||event.data.source!=="go-extension-popup")return;const value=typeof event.data.targetUrl==="string"?event.data.targetUrl:"";if(!value){tell("error",{message:"URLを取得できませんでした。"});return}targetUrl=value});tell("ready")})()</script></body></html>`;
+  return new Response(document, { headers: extensionHtmlHeaders(Boolean(turnstile)) });
+}
+async function handleExtensionCreate(request: Request, env: Env): Promise<Response> {
+  let payload: { targetUrl?: unknown; turnstileToken?: unknown }; try { payload = await request.json(); } catch { return jsonResponse({ error: "リクエストを読み取れませんでした。" }, 400); }
+  const targetUrl = typeof payload.targetUrl === "string" ? payload.targetUrl : ""; const token = typeof payload.turnstileToken === "string" ? payload.turnstileToken : null;
+  if (request.headers.get("Origin") !== EXTENSION_ORIGIN) return jsonResponse({ error: "この拡張機能からのみ作成できます。" }, 403);
+  if (!(await verifyTurnstile(token, request, env))) return jsonResponse({ error: "安全確認に失敗しました。" }, 403);
+  const target = isValidTargetUrl(targetUrl.trim(), new URL(request.url)); if (!target.ok) return jsonResponse({ error: "有効なURLを入力してください。" }, 400);
+  const values: CreateValues = { slugStyle: "random", targetUrl: target.url, maxOpenCount: null, limitReachedTargetUrl: null, scheduledTargetUrl: null, switchAt: null, unlockAt: null, expiresAt: null, endedMessage: null, receiptRequired: false, passphrase: null, shareCardEnabled: false, shareCardTitle: null, shareCardDescription: null, previewMode: "none", ogTitle: null, ogDescription: null, ogImageUrl: null };
+  try { const link = await createLink(env, values); const shortUrl = buildShortUrl(request, link.slug); return jsonResponse({ shortUrl, manageUrl: buildManageUrl(request, link.slug, link.manage_key), qrSvg: qrSvg(shortUrl) }, 201); } catch (error) { if (error instanceof SlugUnavailableError) return jsonResponse({ error: "短縮URLを作成できませんでした。もう一度お試しください。" }, 409); throw error; }
+}
 async function handleHome(request: Request, env: Env): Promise<Response> { const error = new URL(request.url).searchParams.get("error") ?? undefined; return renderHome(request, env, error); }
 
 async function requireAdmin(request: Request, env: Env): Promise<AdminIdentity | Response> {
@@ -639,7 +691,7 @@ async function handleAdminRequest(request: Request, env: Env, path: string, admi
     const initialAudience = hasInitialAudienceValues(form) ? await parseAudienceValues(form, request, parsed.values.targetUrl, isScheduledTargetConfigured(parsed.values.scheduledTargetUrl, parsed.values.switchAt)) : null;
     if (initialAudience && "error" in initialAudience) return renderHome(request, env, initialAudience.error, { createAction: "/admin/new", requiresTurnstile: false, title: "管理者として短縮URLを作成" });
     try {
-      const link = await createLink(env, parsed.values, initialAudience?.values ?? null);
+      const { link } = await createConfiguredLink(env, parsed.values, initialAudience ? [initialAudience.values] : []);
       await writeAdminAudit(env, admin, "link.create", link);
       return redirectResponse(`${getOrigin(request)}/admin/links/${encodeURIComponent(link.slug)}?notice=${encodeURIComponent("リンクを作成しました。")}`);
     } catch (error) { if (error instanceof SlugUnavailableError) return renderHome(request, env, "この短縮パスはすでに使われています。", { createAction: "/admin/new", requiresTurnstile: false, title: "管理者として短縮URLを作成" }); throw error; }
@@ -725,8 +777,14 @@ async function handleCreate(request: Request, env: Env): Promise<Response> {
   const initialAudience = hasInitialAudienceValues(form) ? await parseAudienceValues(form, request, parsed.values.targetUrl, isScheduledTargetConfigured(parsed.values.scheduledTargetUrl, parsed.values.switchAt)) : null;
   if (initialAudience && "error" in initialAudience) return renderCreateErrorPage(initialAudience.error);
   try {
-    const link = await createLink(env, parsed.values, initialAudience?.values ?? null);
-    return renderCreatedPage(buildShortUrl(request, link.slug), buildManageUrl(request, link.slug, link.manage_key), link);
+    const created = await createConfiguredLink(env, parsed.values, initialAudience ? [initialAudience.values] : []);
+    const link = created.link;
+    const alternateUrls = created.spokenSlugs ? [
+      ["ひらがな", buildShortUrl(request, created.spokenSlugs.hiragana)],
+      ["カタカナ", buildShortUrl(request, created.spokenSlugs.katakana)],
+      ["漢字", buildShortUrl(request, created.spokenSlugs.kanji)],
+    ] as const : [];
+    return renderCreatedPage(buildShortUrl(request, link.slug), buildManageUrl(request, link.slug, link.manage_key), link, alternateUrls);
   } catch (error) { if (error instanceof SlugUnavailableError) return renderCreateErrorPage("この短縮パスはすでに使われています。"); throw error; }
 }
 
@@ -826,6 +884,8 @@ async function handleRobots(): Promise<Response> { return new Response("User-age
 async function parseBaseLinkValues(form: FormData, request: Request, allowBlankSlug: boolean): Promise<{ values: CreateValues } | { error: string }> {
   const target = isValidTargetUrl(getFormText(form, "target_url").trim(), new URL(request.url)); if (!target.ok) return { error: "有効なURLを入力してください。" };
   const slug = normalizeSlugInput(getFormText(form, allowBlankSlug ? "custom_slug" : "slug")); if ((!allowBlankSlug || slug) && !isValidSlug(slug)) return { error: "有効な短縮パスを入力してください。" };
+  const slugStyle: SlugStyle = form.get("word_slug_enabled") === "1" ? "words-ja" : "random";
+  if (slug && slugStyle !== "random") return { error: "手入力の短縮パスと、ランダムな単語URLは同時に使えません。" };
   const scheduledRaw = getFormText(form, "scheduled_target_url").trim(); const switchRaw = getFormText(form, "switch_at"); const switchAt = parseUtcDatetime(switchRaw);
   if (switchRaw && !switchAt) return { error: "切替日時が正しくありません。" }; if (Boolean(scheduledRaw) !== Boolean(switchAt)) return { error: "転送先の切替には、切替後URLと切替日時の両方を入力してください。" };
   let scheduledTargetUrl: string | null = null; if (scheduledRaw) { const checked = isValidTargetUrl(scheduledRaw, new URL(request.url)); if (!checked.ok) return { error: "切替後の転送先URLが有効ではありません。" }; scheduledTargetUrl = checked.url; }
@@ -838,7 +898,7 @@ async function parseBaseLinkValues(form: FormData, request: Request, allowBlankS
   if (limitReachedTargetEnabled) { if (maxOpenCount === null) return { error: "上限到達後の転送を使うには、利用回数の上限を設定してください。" }; const checked = isValidTargetUrl(getFormText(form, "limit_reached_target_url").trim(), new URL(request.url)); if (!checked.ok) return { error: "上限到達後の転送先URLが有効ではありません。" }; limitReachedTargetUrl = checked.url; }
   const rawPassphrase = getFormText(form, "passphrase"); if (rawPassphrase.length > 256) return { error: "合言葉は256文字以内にしてください。" };
   const shareCardEnabled = false; const shareCardTitle = ""; const shareCardDescription = "";
-  return { values: { slug: slug || undefined, targetUrl: target.url, maxOpenCount, limitReachedTargetUrl, scheduledTargetUrl, switchAt, unlockAt, expiresAt, endedMessage: endedMessage || null, receiptRequired: false, passphrase: rawPassphrase ? await createPassphraseRecord(rawPassphrase) : null, shareCardEnabled, shareCardTitle: null, shareCardDescription: null } };
+  return { values: { slug: slug || undefined, slugStyle, targetUrl: target.url, maxOpenCount, limitReachedTargetUrl, scheduledTargetUrl, switchAt, unlockAt, expiresAt, endedMessage: endedMessage || null, receiptRequired: false, passphrase: rawPassphrase ? await createPassphraseRecord(rawPassphrase) : null, shareCardEnabled, shareCardTitle: null, shareCardDescription: null } };
 }
 async function parseLinkValues(form: FormData, request: Request, allowBlankSlug: boolean): Promise<{ values: CreateValues } | { error: string }> {
   const parsed = await parseBaseLinkValues(form, request, allowBlankSlug); if ("error" in parsed) return parsed;
@@ -862,7 +922,7 @@ async function parseLinkValues(form: FormData, request: Request, allowBlankSlug:
 }
 function utcDisplayValue(value: string | null): string | null { if (!value) return null; const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value) ? `${value.replace(" ", "T")}Z` : value; const timestamp = Date.parse(normalized); return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString(); }
 function parseUtcDatetime(value: string): string | null { if (!value) return null; if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) { const timestamp = Date.parse(value); return Number.isNaN(timestamp) || new Date(timestamp).toISOString() !== value ? null : value; } const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value); if (!match) return null; const [year, month, day, hour, minute] = match.slice(1).map(Number); const date = new Date(Date.UTC(year, month - 1, day, hour, minute)); if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day || date.getUTCHours() !== hour || date.getUTCMinutes() !== minute) return null; return date.toISOString(); }
-function qrSvg(value: string): string { const qr = qrcode(0, "M"); qr.addData(value, "Byte"); qr.make(); return qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true }).replace(/<svg([^>]*)>/, "<svg$1><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>"); }
+function qrSvg(value: string): string { const qr = qrcode(0, "M"); qr.addData(value, "Byte"); qr.make(); return qr.createSvgTag({ cellSize: 5, margin: 4, scalable: true }).replace(/<svg([^>]*)>/, "<svg$1><rect width=\"100%\" height=\"100%\" fill=\"#fff\"/>"); }
 function qrImage(value: string): string { return `<img src="data:image/svg+xml,${encodeURIComponent(qrSvg(value))}" alt="短縮URLのQRコード">`; }
 function unlockCookieName(slug: string): string { return `go_unlock_${slug}`; }
 function publicStateVersion(target: PublicTarget): string { return `${target.link.state_version}.${target.entry?.state_version ?? 0}`; }
@@ -878,4 +938,5 @@ function getFormText(form: FormData, name: string): string { const value = form.
 function getNullableFormText(form: FormData, name: string): string | null { const value = form.get(name); return typeof value === "string" ? value : null; }
 function safeDecode(value: string): string { try { return decodeURIComponent(value); } catch { return ""; } }
 function htmlHeaders(allowTurnstile: boolean): Headers { const scriptSrc = allowTurnstile ? "'self' 'unsafe-inline' https://challenges.cloudflare.com" : "'self' 'unsafe-inline'"; const extra = allowTurnstile ? " connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com;" : ""; return new Headers({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY", "Permissions-Policy": "geolocation=(), microphone=(), camera=()", "Content-Security-Policy": `default-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; script-src ${scriptSrc}; form-action 'self'; base-uri 'none'; frame-ancestors 'none';${extra}` }); }
+function extensionHtmlHeaders(allowTurnstile: boolean): Headers { const scriptSrc = allowTurnstile ? "'self' 'unsafe-inline' https://challenges.cloudflare.com" : "'self' 'unsafe-inline'"; const extra = allowTurnstile ? " connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com;" : ""; return new Headers({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "Permissions-Policy": "geolocation=(), microphone=(), camera=()", "Content-Security-Policy": `default-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; script-src ${scriptSrc}; form-action 'self'; base-uri 'none'; frame-ancestors ${EXTENSION_ORIGIN};${extra}` }); }
 function noStoreHeaders(): HeadersInit { return { "Cache-Control": "no-store" }; }

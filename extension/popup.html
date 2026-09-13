@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#fffaf4">
+    <title>go.snkisk.com</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <strong>go.snkisk.com</strong>
+        <div class="controls">
+          <div class="locale" aria-label="Language">
+            <button type="button" data-locale="ja" aria-pressed="true">JA</button>
+            <button type="button" data-locale="en" aria-pressed="false">EN</button>
+          </div>
+          <div class="theme" aria-label="Theme">
+            <button type="button" data-theme="light" aria-pressed="false" aria-label="Light">☀</button>
+            <button type="button" data-theme="system" aria-pressed="true" aria-label="System">◐</button>
+            <button type="button" data-theme="dark" aria-pressed="false" aria-label="Dark">☾</button>
+          </div>
+        </div>
+      </header>
+      <p id="status" role="status" aria-live="polite" data-i18n="loading">短縮URLを作成中…</p>
+      <label class="sr-only" for="source-url" data-i18n="sourceLabel">短縮するURL</label>
+      <input id="source-url" type="url" autocomplete="url" spellcheck="false" aria-describedby="status">
+      <section id="result" hidden aria-label="Short URL">
+        <label class="sr-only" for="short-url" data-i18n="shortLabel">短縮URL</label>
+        <div class="short-row">
+          <input id="short-url" readonly aria-readonly="true">
+          <button id="copy" type="button" data-i18n="copy">コピー</button>
+        </div>
+        <img id="qr" alt="">
+        <a id="manage" target="_blank" rel="noreferrer" data-i18n="manage">管理URLを開く</a>
+      </section>
+      <button id="retry" type="button" hidden data-i18n="retry">このURLで作り直す</button>
+      <iframe id="bridge" title="安全確認" aria-hidden="true" src="https://go.snkisk.com/extension/create"></iframe>
+    </main>
+    <footer><a href="https://go.snkisk.com/" target="_blank" rel="noreferrer">go.snkisk.com</a></footer>
+    <script src="popup.js"></script>
+  </body>
+</html>
