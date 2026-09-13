@@ -1,7 +1,7 @@
-const SERVICE_ORIGIN = "https://go.snkisk.com";
+const SERVICE_ORIGIN = "https://sinkaisoku.com";
 const copy = {
-  ja: { loading: "短縮URLを作成中…", sourceLabel: "短縮するURL", shortLabel: "短縮URL", copy: "コピー", copied: "コピーしました", retry: "このURLで作り直す", configure: "go.snkisk.comで詳細に設定する", manage: "管理URLを開く", downloadQr: "QRコードを保存", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "QRコードを保存できませんでした。", invalid: "このページのURLは短縮できません。URLを入力して作り直してください。", failed: "作成できませんでした。もう一度お試しください。", verifying: "安全確認中…", light: "ライトテーマ", system: "システムテーマ", dark: "ダークテーマ" },
-  en: { loading: "Creating your short URL…", sourceLabel: "URL to shorten", shortLabel: "Short URL", copy: "Copy", copied: "Copied", retry: "Create again with this URL", configure: "Configure on go.snkisk.com", manage: "Open management URL", downloadQr: "Save QR code", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "Could not save the QR code.", invalid: "This page cannot be shortened. Enter a URL and try again.", failed: "Could not create the short URL. Please try again.", verifying: "Verifying…", light: "Light theme", system: "System theme", dark: "Dark theme" },
+  ja: { loading: "短縮URLを作成中…", sourceLabel: "短縮するURL", shortLabel: "短縮URL", copy: "コピー", copied: "コピーしました", retry: "このURLで作り直す", configure: "sinkaisoku.comで詳細に設定する", manage: "管理URLを開く", downloadQr: "QRコードを保存", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "QRコードを保存できませんでした。", invalid: "このページのURLは短縮できません。URLを入力して作り直してください。", failed: "作成できませんでした。もう一度お試しください。", verifying: "安全確認中…", light: "ライトテーマ", system: "システムテーマ", dark: "ダークテーマ" },
+  en: { loading: "Creating your short URL…", sourceLabel: "URL to shorten", shortLabel: "Short URL", copy: "Copy", copied: "Copied", retry: "Create again with this URL", configure: "Configure on sinkaisoku.com", manage: "Open management URL", downloadQr: "Save QR code", downloadPng: "PNG", downloadJpg: "JPG", downloadSvg: "SVG", downloadFailed: "Could not save the QR code.", invalid: "This page cannot be shortened. Enter a URL and try again.", failed: "Could not create the short URL. Please try again.", verifying: "Verifying…", light: "Light theme", system: "System theme", dark: "Dark theme" },
 };
 let locale = "ja";
 let theme = "system";
@@ -88,7 +88,7 @@ async function copyShortUrl() {
 function qrFilename(format) {
   let slug = "short-url";
   try { slug = new URL(shortUrl.value).pathname.split("/").filter(Boolean).at(-1) || slug; } catch { /* Keep the safe fallback. */ }
-  return `go-snkisk-${slug.replace(/[^a-zA-Z0-9_-]/g, "-")}-qr.${format}`;
+  return `sinkaisoku-${slug.replace(/[^a-zA-Z0-9_-]/g, "-")}-qr.${format}`;
 }
 function downloadBlob(blob, filename) {
   const anchor = document.createElement("a");

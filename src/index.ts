@@ -3,7 +3,11 @@
 import qrcode from "qrcode-generator";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const SERVICE_HOST = "go.snkisk.com";
+const PRIMARY_SERVICE_HOST = "sinkaisoku.com";
+const LEGACY_SERVICE_HOST = "go.snkisk.com";
+const PUBLIC_SERVICE_HOSTS = new Set([PRIMARY_SERVICE_HOST, LEGACY_SERVICE_HOST]);
+const DOCS_HOSTS = new Set(["docs.sinkaisoku.com", "docs.go.snkisk.com"]);
+const SERVICE_HOST = PRIMARY_SERVICE_HOST;
 const EXTENSION_ORIGIN = "chrome-extension://jgbmdlhafngmkkbdfkankelhdjjcdgfk";
 const BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const SLUG_LENGTH = 7;
@@ -81,7 +85,9 @@ const accessJwks = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
-      const path = new URL(request.url).pathname;
+      const requestUrl = new URL(request.url);
+      if (isDocsHostname(requestUrl.hostname)) return handleDocs(request);
+      const path = requestUrl.pathname;
       if (path === "/admin") return request.method === "GET" ? redirectResponse(`${getOrigin(request)}/admin/`) : renderErrorPage(405, "Method Not Allowed", "この操作は許可されていません。", "GET");
       if (path.startsWith("/admin/") || path.startsWith("/api/admin/")) {
         const admin = await requireAdmin(request, env);
@@ -152,7 +158,15 @@ function isValidSlug(slug: string): boolean { return /^[\p{L}\p{N}_-]{1,64}$/u.t
 function normalizeSlugInput(value: string): string { return value.trim().replace(/^\/+/, ""); }
 function escapeHtml(value: string): string { return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"); }
 function escapeUserTextForI18n(value: string): string { return Array.from(value, (character) => `<span data-no-i18n>${escapeHtml(character)}</span>`).join(""); }
-function getOrigin(request: Request): string { return new URL(request.url).origin; }
+function isPublicServiceHostname(hostname: string): boolean { return PUBLIC_SERVICE_HOSTS.has(normalizeHostname(hostname)); }
+function isDocsHostname(hostname: string): boolean { return DOCS_HOSTS.has(normalizeHostname(hostname)); }
+function getPublicServiceHostname(request: Request): string {
+  const requested = normalizeHostname(new URL(request.url).hostname);
+  return isPublicServiceHostname(requested) ? requested : PRIMARY_SERVICE_HOST;
+}
+function docsHostnameFor(request: Request): string { return getPublicServiceHostname(request) === LEGACY_SERVICE_HOST ? "docs.go.snkisk.com" : "docs.sinkaisoku.com"; }
+function getDocsOrigin(request: Request): string { return `https://${docsHostnameFor(request)}`; }
+function getOrigin(request: Request): string { return `https://${getPublicServiceHostname(request)}`; }
 function buildShortUrl(request: Request, slug: string): string { return `${getOrigin(request)}/${slug}`; }
 function buildManageUrl(request: Request, slug: string, manageKey: string): string { return `${getOrigin(request)}/manage/${slug}?key=${manageKey}`; }
 
@@ -179,7 +193,7 @@ function isValidTargetUrl(value: string, requestUrl: URL): { ok: true; url: stri
     const parsed = new URL(value);
     if (!(["http:", "https:"].includes(parsed.protocol))) return { ok: false };
     const host = normalizeHostname(parsed.hostname);
-    if (host === SERVICE_HOST || host === normalizeHostname(requestUrl.hostname) || isPrivateOrLocalHostname(host)) return { ok: false };
+    if (isPublicServiceHostname(host) || isDocsHostname(host) || host === normalizeHostname(requestUrl.hostname) || isPrivateOrLocalHostname(host)) return { ok: false };
     return { ok: true, url: parsed.href };
   } catch { return { ok: false }; }
 }
@@ -190,7 +204,7 @@ function publicHttpsUrl(value: string, requestUrl: URL): URL | null {
     const host = normalizeHostname(parsed.hostname);
     // OG imports/images only support public DNS hostnames. Rejecting every IP literal
     // also closes alternate IPv6 spellings such as ::ffff:7f00:1.
-    if (parsed.protocol !== "https:" || host === SERVICE_HOST || host === normalizeHostname(requestUrl.hostname) || isPrivateOrLocalHostname(host) || isIpLiteralHostname(host)) return null;
+    if (parsed.protocol !== "https:" || isPublicServiceHostname(host) || isDocsHostname(host) || host === normalizeHostname(requestUrl.hostname) || isPrivateOrLocalHostname(host) || isIpLiteralHostname(host)) return null;
     return parsed;
   } catch { return null; }
 }
@@ -306,7 +320,7 @@ const localizationCreateFormScript = `<script>(()=>{if(document.documentElement.
   </script></body></html>`, status, allowTurnstile);
 }
 
-function slugInput(name: string, value: string, id: string, placeholder = "未入力なら自動生成"): string { return `<div class="slug-input"><span>${escapeHtml(SERVICE_HOST)}/</span><input id="${id}" type="text" name="${name}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" data-slug-check="#${id}_availability"></div><p id="${id}_availability" class="availability" aria-live="polite"></p>`; }
+function slugInput(name: string, value: string, id: string, placeholder = "未入力なら自動生成", host = PRIMARY_SERVICE_HOST): string { return `<div class="slug-input"><span>${escapeHtml(host)}/</span><input id="${id}" type="text" name="${name}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" maxlength="64" pattern="[A-Za-z0-9_-]{1,64}" autocomplete="off" data-slug-check="#${id}_availability"></div><p id="${id}_availability" class="availability" aria-live="polite"></p>`; }
 function copyField(label: string, value: string): string { return `<div class="copy-field"><label>${escapeHtml(label)}</label><div class="copy-row"><a href="${escapeHtml(value)}" rel="noreferrer">${escapeHtml(value)}</a><button type="button" class="copy-action" data-copy="${escapeHtml(value)}" data-copy-target="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}をコピー`)}"><span data-copy-icon aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10.5 13.5a4.5 4.5 0 0 0 6.36.14l2.5-2.5a4.5 4.5 0 0 0-6.36-6.36l-1.43 1.42"></path><path d="M13.5 10.5a4.5 4.5 0 0 0-6.36-.14l-2.5 2.5A4.5 4.5 0 0 0 11 19.22l1.42-1.42"></path></svg></span><span data-copy-label>コピー</span></button><span class="copy-feedback" data-copy-feedback aria-live="polite" role="status"></span></div></div>`; }
 function passphraseInput(id: string, autocomplete: string, required = false): string { return `<div class="secret-input"><input id="${escapeHtml(id)}" class="secret-field" type="password" name="passphrase"${required ? " required" : ""} autocomplete="${escapeHtml(autocomplete)}" maxlength="256"><button type="button" class="secondary secret-toggle" data-passphrase-toggle aria-controls="${escapeHtml(id)}" aria-pressed="false" aria-label="合言葉を表示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg></button></div>`; }
 function renderLocalDateTime(value: string | null, empty = "なし"): string { const utcValue = utcDisplayValue(value); return utcValue ? `<time data-local-time="${escapeHtml(utcValue)}">${escapeHtml(utcValue)}（UTC）</time>` : escapeHtml(empty); }
@@ -384,7 +398,9 @@ function renderCreateQueryPresetScript(): string {
     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",apply,{once:true});else apply();
   })();</script>`;
 }
-function renderHome(_request: Request, env: Env, error?: string, options: { createAction?: string; requiresTurnstile?: boolean; title?: string; lead?: string } = {}): Response {
+function renderHome(request: Request, env: Env, error?: string, options: { createAction?: string; requiresTurnstile?: boolean; title?: string; lead?: string } = {}): Response {
+  const serviceHost = getPublicServiceHostname(request);
+  const docsQueryUrl = `${getDocsOrigin(request)}/query`;
   const createAction = options.createAction ?? "/create";
   const requiresTurnstile = options.requiresTurnstile ?? true;
   const turnstile = requiresTurnstile && env.TURNSTILE_SITE_KEY ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><div class="cf-turnstile" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}" data-action="${TURNSTILE_ACTION}" data-callback="goTurnstileSuccess" data-expired-callback="goTurnstileExpired" data-error-callback="goTurnstileError"></div>` : "";
@@ -428,6 +444,11 @@ function renderHome(_request: Request, env: Env, error?: string, options: { crea
     .create-studio .initial-audience-fields{display:grid;gap:12px}
     .create-studio .condition-card-grid{gap:14px 16px}
     .create-studio .condition-card [data-limit-fallback-fields]{grid-column:2}
+    .create-studio .service-guides{display:grid;gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid var(--studio-line)}
+    .create-studio .service-guides h2{margin:0;font-size:1rem}
+    .create-studio .service-guides p{margin:0;color:var(--studio-muted);font-size:.9rem;line-height:1.55}
+    .create-studio .service-guides a{color:var(--link);font-weight:700}
+    .create-studio .extension-download-status{display:inline-flex;align-items:center;min-height:32px;border:1px solid var(--studio-line);border-radius:999px;padding:4px 10px;color:var(--studio-muted);cursor:not-allowed;font-size:.84rem;font-weight:700}
     .create-studio .rule-preview>h2{font-size:1.06rem}
     .create-studio .rule-preview>p,.create-studio .rule-note,.create-studio .rule-current .eyebrow{display:none}
     .create-studio .preview-pane>h2{font-size:1.06rem}
@@ -469,7 +490,21 @@ function renderHome(_request: Request, env: Env, error?: string, options: { crea
   const lead = options.lead ?? "";
   const queryPreset = options.createAction ? "" : " data-query-preset";
   const createInfo = (kind: "slug" | "words", fallback: string) => `<span class="create-info-wrap"><button class="create-info" type="button" data-create-info="${kind}" aria-controls="create_${kind}_info" aria-expanded="false" aria-label="${fallback}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 10.5v5M12 7.5h.01"></path></svg></button><span id="create_${kind}_info" class="create-info-tooltip" role="tooltip" hidden></span></span>`;
-  return renderLayout(title, `<section class="create-studio"><div class="create-pane"><p class="eyebrow">${options.createAction ? "管理ダッシュボード" : ""}</p><h1>${escapeHtml(title)}</h1>${lead ? `<p class="lead">${escapeHtml(lead)}</p>` : ""}${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<form class="create-form" method="POST" action="${escapeHtml(createAction)}"${queryPreset}>${templates}<section class="create-basics"><label for="target_url">最初の転送先URL</label><input id="target_url" type="url" name="target_url" placeholder="https://example.com/a" required maxlength="2048" autocomplete="url"><div class="create-field-heading"><label for="custom_slug">短縮パス</label>${createInfo("slug", "短縮パスの形式を表示")}</div>${slugInput("custom_slug", "", "custom_slug")}<div class="create-word-option"><label class="check"><input type="checkbox" name="word_slug_enabled" value="1"> <span data-word-slug-label>ランダムな日本語の単語2つでURLを発行する</span></label>${createInfo("words", "単語URLの種類を表示")}</div></section>${renderCreateDetails()}${settingInfoScript}${settingInfoLocaleRefreshScript}${createPreviewLocaleScript}${createStateScript}${createRuleLocaleScript}${createRuleHeadingLocaleScript}${renderCreateQueryPresetScript()}<section class="short-url"><h2>作成される短縮URL</h2><output data-preview-short-url>${SERVICE_HOST}/…</output><p class="validation" data-create-validation>転送先URLと短縮パスを確認してください</p></section>${turnstile}<button type="submit" data-create-submit>短縮URLを作成</button></form></div><aside class="preview-pane">${rules}<p class="note">アクセス履歴・IPアドレス・User-Agentは保存しません。利用回数制限を設定した場合のみ、累計利用回数を保持します。</p></aside></section>`, 200, Boolean(turnstile));
+  const guidance = options.createAction ? "" : `<section class="service-guides" aria-label="サービス案内"><h2 data-service-guide="title">クエリー設定と拡張機能</h2><p><a href="${escapeHtml(docsQueryUrl)}" data-service-guide="docs">クエリーで設定を入力する方法を見る</a></p><p><span class="extension-download-status" aria-disabled="true" data-service-guide="extension">Chrome拡張機能のダウンロードURL：開発中</span></p></section><script>(()=>{const copy={ja:{title:"クエリー設定と拡張機能",docs:"クエリーで設定を入力する方法を見る",extension:"Chrome拡張機能のダウンロードURL：開発中"},en:{title:"Query settings and extension",docs:"Learn how to prefill settings with a query",extension:"Chrome extension download URL: In development"}},sync=()=>{const locale=document.documentElement.lang==="en"?"en":"ja";document.querySelectorAll("[data-service-guide]").forEach(element=>{const key=element.dataset.serviceGuide;if(key&&copy[locale][key])element.textContent=copy[locale][key]})};document.addEventListener("go:localechange",sync);document.addEventListener("DOMContentLoaded",sync,{once:true})})();</script>`;
+  return renderLayout(title, `<section class="create-studio"><div class="create-pane"><p class="eyebrow">${options.createAction ? "管理ダッシュボード" : ""}</p><h1>${escapeHtml(title)}</h1>${lead ? `<p class="lead">${escapeHtml(lead)}</p>` : ""}${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}<form class="create-form" method="POST" action="${escapeHtml(createAction)}"${queryPreset}>${templates}<section class="create-basics"><label for="target_url">最初の転送先URL</label><input id="target_url" type="url" name="target_url" placeholder="https://example.com/a" required maxlength="2048" autocomplete="url"><div class="create-field-heading"><label for="custom_slug">短縮パス</label>${createInfo("slug", "短縮パスの形式を表示")}</div>${slugInput("custom_slug", "", "custom_slug", "未入力なら自動生成", serviceHost)}<div class="create-word-option"><label class="check"><input type="checkbox" name="word_slug_enabled" value="1"> <span data-word-slug-label>ランダムな日本語の単語2つでURLを発行する</span></label>${createInfo("words", "単語URLの種類を表示")}</div></section>${renderCreateDetails()}${settingInfoScript}${settingInfoLocaleRefreshScript}${createPreviewLocaleScript}${createStateScript}${createRuleLocaleScript}${createRuleHeadingLocaleScript}${renderCreateQueryPresetScript()}<section class="short-url"><h2>作成される短縮URL</h2><output data-preview-short-url>${escapeHtml(serviceHost)}/…</output><p class="validation" data-create-validation>転送先URLと短縮パスを確認してください</p></section>${turnstile}<button type="submit" data-create-submit>短縮URLを作成</button></form>${guidance}</div><aside class="preview-pane">${rules}<p class="note">アクセス履歴・IPアドレス・User-Agentは保存しません。利用回数制限を設定した場合のみ、累計利用回数を保持します。</p></aside></section>`, 200, Boolean(turnstile));
+}
+function renderDocs(request: Request): Response {
+  const serviceOrigin = `https://${normalizeHostname(new URL(request.url).hostname) === "docs.go.snkisk.com" ? LEGACY_SERVICE_HOST : PRIMARY_SERVICE_HOST}`;
+  const docsOrigin = `https://${normalizeHostname(new URL(request.url).hostname)}`;
+  const docsScript = `<script>(()=>{const copy={ja:{title:"クエリーで作成設定を入力する",lead:"作成画面を開くURLに設定値を追加すると、公開可能な項目を入力済みにできます。",back:"短縮URLを作成する",basics:"基本項目",conditions:"任意設定",example:"URL例",note:"値はURLエンコードして渡します。合言葉そのものはクエリーでは設定できません。",openProtection:"合言葉のカードだけを開くには protection_enabled=1 を使い、合言葉は作成画面で直接入力してください。",availability:"利用できる期間",limit:"回数制限",schedule:"日時で転送先を変更",end:"終了時の表示",preview:"SNSプレビュー",audience:"相手別入口",query:"クエリー設定"},en:{title:"Prefill creation settings with a query",lead:"Add settings to the URL that opens the creation page to prefill public options.",back:"Create a short link",basics:"Basics",conditions:"Optional settings",example:"Example URL",note:"Pass values URL-encoded. A passphrase itself cannot be set in the query.",openProtection:"Use protection_enabled=1 only to open the passphrase card, then type the passphrase directly on the creation page.",availability:"Availability window",limit:"Usage limit",schedule:"Change destination by time",end:"End display",preview:"Social preview",audience:"Audience entry",query:"Query settings"}},sync=()=>{const locale=document.documentElement.lang==="en"?"en":"ja";document.querySelectorAll("[data-docs-copy]").forEach(element=>{const key=element.dataset.docsCopy;if(key&&copy[locale][key])element.textContent=copy[locale][key]});document.title=copy[locale].query+" | ${escapeHtml(docsOrigin)}"};document.addEventListener("go:localechange",sync);document.addEventListener("DOMContentLoaded",sync,{once:true})})();</script>`;
+  const parameter = (name: string, description: string) => `<div class="docs-parameter"><code>${escapeHtml(name)}</code><span>${escapeHtml(description)}</span></div>`;
+  const body = `<style>.docs-page{display:grid;gap:24px}.docs-page h1,.docs-page h2,.docs-page p{margin:0}.docs-page h1{font-size:clamp(1.7rem,4vw,2.3rem)}.docs-page h2{font-size:1.12rem}.docs-page .lead{max-width:64ch}.docs-section{display:grid;gap:10px}.docs-parameters{display:grid;gap:8px}.docs-parameter{display:grid;grid-template-columns:minmax(172px,auto) minmax(0,1fr);gap:10px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line)}.docs-parameter:last-child{border-bottom:1px solid var(--line)}.docs-parameter code,.docs-example code{overflow-wrap:anywhere}.docs-example{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-alt)}@media(max-width:560px){.docs-parameter{grid-template-columns:1fr;gap:4px}}</style><main class="card docs-page"><header class="docs-section"><p class="eyebrow">${escapeHtml(docsOrigin)}</p><h1 data-docs-copy="title">クエリーで作成設定を入力する</h1><p class="lead" data-docs-copy="lead">作成画面を開くURLに設定値を追加すると、公開可能な項目を入力済みにできます。</p><p><a class="button secondary" href="${escapeHtml(serviceOrigin)}/" data-docs-copy="back">短縮URLを作成する</a></p></header><section class="docs-section"><h2 data-docs-copy="basics">基本項目</h2><div class="docs-parameters">${parameter("target_url", "最初の転送先URL（必須）")}${parameter("custom_slug", "希望する短縮パス")}${parameter("word_slug_enabled", "1 または true で単語URLを有効化")}</div></section><section class="docs-section"><h2 data-docs-copy="conditions">任意設定</h2><div class="docs-parameters">${parameter("period_enabled, unlock_at, expires_at", "利用できる期間")}${parameter("limit_enabled, max_open_count, limit_reached_action, limit_reached_target_url", "回数制限")}${parameter("schedule_enabled, switch_at, scheduled_target_url", "日時で転送先を変更")}${parameter("end-display_enabled, ended_message", "終了時の表示")}${parameter("preview_enabled, preview_mode, og_title, og_description, og_image_url", "SNSプレビュー")}${parameter("audience_enabled, entry_label, entry_slug, entry_expires_at, entry_ended_message, entry_preview_mode, entry_og_title, entry_og_description, entry_og_image_url", "相手別入口")}</div><p data-docs-copy="openProtection">合言葉のカードだけを開くには protection_enabled=1 を使い、合言葉は作成画面で直接入力してください。</p></section><section class="docs-section"><h2 data-docs-copy="example">URL例</h2><div class="docs-example"><code>${escapeHtml(`${serviceOrigin}/?target_url=https%3A%2F%2Fexample.com%2Fnews&custom_slug=autumn&max_open_count=10`)}</code><p data-docs-copy="note">値はURLエンコードして渡します。合言葉そのものはクエリーでは設定できません。</p></div></section></main>${docsScript}`;
+  return renderLayout(`クエリー設定 | ${docsOrigin}`, body);
+}
+function handleDocs(request: Request): Response {
+  const path = new URL(request.url).pathname;
+  if (request.method === "GET" && (path === "/" || path === "/query")) return renderDocs(request);
+  return renderErrorPage(request.method === "GET" ? 404 : 405, request.method === "GET" ? "Not Found" : "Method Not Allowed", request.method === "GET" ? "このドキュメントは存在しません。" : "この操作は許可されていません。", request.method === "GET" ? undefined : "GET");
 }
 function renderCreatedPage(shortUrl: string, manageUrl: string, link: Link, alternateUrls: readonly (readonly [string, string])[] = []): Response {
   const spokenUrls = alternateUrls.length ? `<section class="card-subsection"><h2>同じリンクの表記違い</h2><p>すべて同じ転送先・期限・利用回数を共有します。</p>${alternateUrls.map(([label, url]) => copyField(label, url)).join("")}</section>` : "";

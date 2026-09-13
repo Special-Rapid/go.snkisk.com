@@ -1,6 +1,6 @@
-# go.snkisk.com
+# sinkaisoku.com / go.snkisk.com
 
-`go.snkisk.com` で動作する、条件付き短縮 URL サービスのソースコードです。
+`sinkaisoku.com`と`go.snkisk.com`で同じ短縮パスを扱う、条件付き短縮 URL サービスのソースコードです。
 
 ## できること
 
@@ -20,7 +20,9 @@
 
 ## 公開について
 
-このリポジトリは `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
+このリポジトリは `sinkaisoku.com` と `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
+
+クエリーで作成フォームを初期設定する方法は、`https://docs.sinkaisoku.com/query`（または`https://docs.go.snkisk.com/query`）で案内します。両docsホストはWorkerへ割り当て済みで、Turnstileは2つの公開ホストを許可しています。
 
 ## 管理ダッシュボード
 

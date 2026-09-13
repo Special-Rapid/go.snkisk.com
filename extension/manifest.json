@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvDuhdR/8o3TzRjRGFlDAcnlfcpcjpD6BsIfve//HrPAobZwyR3IV7wZgiVbkX7WDeY4G7CR1ykaBqOi2C1btC+EF5+VjFEctsHYDbL7+eJ60CB0pz3WGpn0T9ORr7FA0KDtPlmB7XXaVpb9hydfceojas6gZ+oneBg8bRestRniyFGOf98PKnthNFUxiossklZs+Wam1MkXZMs/fGl2ckiSG4GAlOvP9rFDFaZleRtRWYJxrxxfEse418cdcBevKl/7HeufS7UBtzPFhBSS9n3fEhIu0SYpJ6Wa/JPpyuR5nb+OttBDRWyNYksjDNmJdr+19VPU3ZTNeSsgAoigoEwIDAQAB",
-  "name": "go.snkisk.com",
+  "name": "sinkaisoku.com",
   "version": "0.1.0",
   "description": "開いているページの短縮URLを、ポップアップを開くだけで作成します。",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "go.snkisk.com で短縮"
+    "default_title": "sinkaisoku.com で短縮"
   },
   "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://go.snkisk.com/*"],
+  "host_permissions": ["https://sinkaisoku.com/*"],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://go.snkisk.com"
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://sinkaisoku.com"
   }
 }

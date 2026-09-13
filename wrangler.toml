@@ -6,7 +6,7 @@ preview_urls = false
 
 [vars]
 TURNSTILE_SITE_KEY = "0x4AAAAAADjGLLK2kLzklZSk"
-TURNSTILE_HOSTNAMES = "go.snkisk.com"
+TURNSTILE_HOSTNAMES = "go.snkisk.com,sinkaisoku.com"
 
 [secrets]
 required = ["TURNSTILE_SECRET", "ACCESS_TEAM_DOMAIN", "ACCESS_ADMIN_AUDS"]
