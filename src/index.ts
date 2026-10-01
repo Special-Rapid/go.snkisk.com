@@ -86,6 +86,8 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const requestUrl = new URL(request.url);
+      if (request.method === "GET" && requestUrl.pathname === "/robots.txt") return handleRobots(request);
+      if (request.method === "GET" && requestUrl.pathname === "/sitemap.xml") return handleSitemap(request);
       if (isDocsHostname(requestUrl.hostname)) return handleDocs(request);
       const path = requestUrl.pathname;
       if (path === "/admin") return request.method === "GET" ? redirectResponse(`${getOrigin(request)}/admin/`) : renderErrorPage(405, "Method Not Allowed", "この操作は許可されていません。", "GET");
@@ -101,7 +103,6 @@ export default {
       if (request.method === "GET" && path === "/api/slug-availability") return handleSlugAvailability(request, env);
       const usageRoute = /^\/api\/manage\/([^/]+)\/usage$/.exec(path);
       if (request.method === "GET" && usageRoute) return handleManageUsage(request, env, safeDecode(usageRoute[1]));
-      if (request.method === "GET" && path === "/robots.txt") return handleRobots();
       if (request.method === "GET" && path === "/health") return jsonResponse({ ok: true });
       if (request.method === "GET" && path === "/favicon.ico") return new Response(null, { status: 204, headers: noStoreHeaders() });
 
@@ -969,7 +970,26 @@ async function handleAudienceCreate(request: Request, env: Env, parentSlug: stri
 async function handleAudienceUpdate(request: Request, env: Env, parentSlug: string, entryId: number): Promise<Response> { const form = await request.formData(); const key = getFormText(form, "key"); const link = await getManageLink(env, parentSlug, key); if (!link) return renderErrorPage(403, "Forbidden", "管理URLが正しくありません。"); const entry = await getAudienceEntry(env, link.id, entryId); if (!entry) return renderErrorPage(404, "Not Found", "この入口は存在しません。"); const parsed = await parseAudienceValues(form, request, link.target_url, isScheduledTargetConfigured(link.scheduled_target_url, link.switch_at)); if ("error" in parsed) return renderErrorPage(400, "Bad Request", parsed.error); const v = parsed.values; try { await env.DB.prepare(`UPDATE audience_entries SET slug=?,label=?,expires_at=?,ended_message=?,share_card_enabled=?,share_card_title=?,share_card_description=?,preview_mode=?,og_title=?,og_description=?,og_image_url=?,state_version=state_version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND parent_link_id=? AND deleted_at IS NULL`).bind(v.slug,v.label,v.expiresAt,v.endedMessage,v.shareCardEnabled?1:0,v.shareCardTitle,v.shareCardDescription,v.previewMode,v.ogTitle,v.ogDescription,v.ogImageUrl,entry.id,link.id).run(); } catch (error) { if (isUniqueConstraintError(error)) return renderErrorPage(400, "Bad Request", "この短縮パスはすでに使われています。"); throw error; } return renderManagePage(env, link, buildShortUrl(request, link.slug), buildManageUrl(request, link.slug, key), "入口を更新しました。"); }
 async function handleAudienceDelete(request: Request, env: Env, parentSlug: string, entryId: number): Promise<Response> { const form = await request.formData(); const key = getFormText(form, "key"); const link = await getManageLink(env, parentSlug, key); if (!link) return renderErrorPage(403, "Forbidden", "管理URLが正しくありません。"); const result = await env.DB.prepare("UPDATE audience_entries SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=? AND parent_link_id=? AND deleted_at IS NULL").bind(entryId,link.id).run(); if (!result.meta.changes) return renderErrorPage(404, "Not Found", "この入口は存在しません。"); return renderManagePage(env, link, buildShortUrl(request, link.slug), buildManageUrl(request, link.slug, key), "入口を削除しました。短縮パスは再利用できません。"); }
 async function handleDelete(request: Request, env: Env, slug: string): Promise<Response> { if (!isValidSlug(slug)) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。"); const form = await request.formData(); const link = await getManageLink(env, slug, getFormText(form, "key")); if (!link) return renderErrorPage(403, "Forbidden", "管理URLが正しくありません。"); await env.DB.prepare("UPDATE links SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE slug=? AND deleted_at IS NULL").bind(slug).run(); return renderDeletedPage(); }
-async function handleRobots(): Promise<Response> { return new Response("User-agent: *\nDisallow: /\n", { headers: { "Content-Type": "text/plain; charset=utf-8", ...noStoreHeaders() } }); }
+function crawlOrigin(request: Request): string {
+  const hostname = normalizeHostname(new URL(request.url).hostname);
+  return isDocsHostname(hostname) ? `https://${hostname}` : `https://${getPublicServiceHostname(request)}`;
+}
+function handleRobots(request: Request): Response {
+  const docs = isDocsHostname(new URL(request.url).hostname);
+  // Public service discovery only: unknown bots may fetch the queryless root and sitemap.
+  // Named training/data-collection bots remain denied; robots is not access control.
+  // Docs previously had no robots policy (404); retain its public crawlability.
+  const policy = docs
+    ? "User-agent: *\nAllow: /\n"
+    : "User-agent: *\nDisallow: /\nAllow: /$\nAllow: /sitemap.xml$\n\nUser-agent: GPTBot\nUser-agent: ClaudeBot\nUser-agent: Google-Extended\nUser-agent: Applebot-Extended\nUser-agent: CCBot\nUser-agent: Amazonbot\nUser-agent: meta-externalagent\nDisallow: /\n";
+  const body = `${policy}\nSitemap: ${crawlOrigin(request)}/sitemap.xml\n`;
+  return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8", ...noStoreHeaders() } });
+}
+function handleSitemap(request: Request): Response {
+  const paths = isDocsHostname(new URL(request.url).hostname) ? ["/", "/query"] : ["/"];
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path => `<url><loc>${crawlOrigin(request)}${path}</loc></url>`).join("")}</urlset>\n`;
+  return new Response(body, { headers: { "Content-Type": "application/xml; charset=utf-8", ...noStoreHeaders() } });
+}
 
 async function parseBaseLinkValues(form: FormData, request: Request, allowBlankSlug: boolean): Promise<{ values: CreateValues } | { error: string }> {
   const target = isValidTargetUrl(getFormText(form, "target_url").trim(), new URL(request.url)); if (!target.ok) return { error: "有効なURLを入力してください。" };
