@@ -971,8 +971,9 @@ async function handleAudienceUpdate(request: Request, env: Env, parentSlug: stri
 async function handleAudienceDelete(request: Request, env: Env, parentSlug: string, entryId: number): Promise<Response> { const form = await request.formData(); const key = getFormText(form, "key"); const link = await getManageLink(env, parentSlug, key); if (!link) return renderErrorPage(403, "Forbidden", "管理URLが正しくありません。"); const result = await env.DB.prepare("UPDATE audience_entries SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,state_version=state_version+1 WHERE id=? AND parent_link_id=? AND deleted_at IS NULL").bind(entryId,link.id).run(); if (!result.meta.changes) return renderErrorPage(404, "Not Found", "この入口は存在しません。"); return renderManagePage(env, link, buildShortUrl(request, link.slug), buildManageUrl(request, link.slug, key), "入口を削除しました。短縮パスは再利用できません。"); }
 async function handleDelete(request: Request, env: Env, slug: string): Promise<Response> { if (!isValidSlug(slug)) return renderErrorPage(404, "Not Found", "この短縮URLは存在しません。"); const form = await request.formData(); const link = await getManageLink(env, slug, getFormText(form, "key")); if (!link) return renderErrorPage(403, "Forbidden", "管理URLが正しくありません。"); await env.DB.prepare("UPDATE links SET deleted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE slug=? AND deleted_at IS NULL").bind(slug).run(); return renderDeletedPage(); }
 function crawlOrigin(request: Request): string {
-  const hostname = normalizeHostname(new URL(request.url).hostname);
-  return isDocsHostname(hostname) ? `https://${hostname}` : `https://${getPublicServiceHostname(request)}`;
+  // Both aliases publish the existing primary host, without changing short-link routing.
+  return isDocsHostname(new URL(request.url).hostname)
+    ? `https://docs.${PRIMARY_SERVICE_HOST}` : `https://${PRIMARY_SERVICE_HOST}`;
 }
 function handleRobots(request: Request): Response {
   const docs = isDocsHostname(new URL(request.url).hostname);
@@ -986,7 +987,8 @@ function handleRobots(request: Request): Response {
   return new Response(body, { headers: { "Content-Type": "text/plain; charset=utf-8", ...noStoreHeaders() } });
 }
 function handleSitemap(request: Request): Response {
-  const paths = isDocsHostname(new URL(request.url).hostname) ? ["/", "/query"] : ["/"];
+  // / and /query render the same guide. List its documented entry only.
+  const paths = isDocsHostname(new URL(request.url).hostname) ? ["/query"] : ["/"];
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map(path => `<url><loc>${crawlOrigin(request)}${path}</loc></url>`).join("")}</urlset>\n`;
   return new Response(body, { headers: { "Content-Type": "application/xml; charset=utf-8", ...noStoreHeaders() } });
 }

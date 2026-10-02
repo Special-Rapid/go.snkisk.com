@@ -10,7 +10,8 @@ for (const host of ['go.snkisk.com', 'sinkaisoku.com', 'docs.go.snkisk.com', 'do
     assert.equal(robots.status, 200);
     assert.match(robots.headers.get('content-type'), /^text\/plain/);
     const text = await robots.text();
-    assert.ok(text.includes(`Sitemap: https://${host}/sitemap.xml`));
+    const canonicalHost = host.startsWith('docs.') ? 'docs.sinkaisoku.com' : 'sinkaisoku.com';
+    assert.ok(text.includes(`Sitemap: https://${canonicalHost}/sitemap.xml`));
     if (host.startsWith('docs.')) {
       // Previously robots.txt was 404: do not introduce new crawler restrictions.
       assert.ok(text.startsWith('User-agent: *\nAllow: /\n'));
@@ -24,8 +25,10 @@ for (const host of ['go.snkisk.com', 'sinkaisoku.com', 'docs.go.snkisk.com', 'do
     assert.equal(sitemap.status, 200);
     assert.match(sitemap.headers.get('content-type'), /^application\/xml/);
     const xml = await sitemap.text();
-    assert.ok(xml.includes(`<loc>https://${host}/</loc>`));
-    assert.equal((xml.match(/<loc>/g) || []).length, host.startsWith('docs.') ? 2 : 1);
+    const canonicalPath = host.startsWith('docs.') ? '/query' : '/';
+    assert.ok(xml.includes(`<loc>https://${canonicalHost}${canonicalPath}</loc>`));
+    assert.equal((xml.match(/<loc>/g) || []).length, 1);
+    assert.ok(!xml.includes('go.snkisk.com'));
     assert.ok(!/manage|admin|key=|target_url/.test(xml));
   });
 }
