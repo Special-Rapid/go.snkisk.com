@@ -32,3 +32,15 @@
 - `ACCESS_ADMIN_AUDS`: `/admin/*` と `/api/admin/*` を保護する Access アプリケーションの AUDをカンマ区切りで指定
 
 管理者の強制操作は `admin_audit_events` に90日間記録し、日次Cronで期限切れの記録を削除します。リンクの削除は論理削除で、短縮パスは再利用できません。アクセス履歴・IPアドレス・User-Agentは保存しません。
+
+## 静的プレビュー画像
+
+`GET /assets/share-preview-amber-waves.jpg` は元の800×400 JPEGを公開CDNから取得する互換経路です。`src/static-media.ts` にURL・SHA256・49793 bytes・MIMEを固定し、status/MIME/サイズ/署名/hashを確認した画像だけを従来の200とcache headerで返します。CDN取得失敗・不一致は502/no-storeで返します。queryや利用者の認証headerはCDNへ渡しません。画像本体やbase64はGitへ保存せず、変更時はownerのCDN原本確認後にmappingとテストを更新します。
+
+```sh
+npm ci
+npm run typecheck
+npm test
+```
+
+テストはCDNアクセスをmockし、原本を再uploadしません。
