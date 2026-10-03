@@ -23,7 +23,8 @@ export async function proxyVerifiedImage(asset: Readonly<VerifiedImage>): Promis
       || !/^[a-f0-9]{64}$/.test(asset.sha256) || asset.mime !== "image/jpeg") throw new Error("Invalid static image mapping");
 
     const upstream = await fetch(url.href, {
-      redirect: "error", signal: AbortSignal.timeout(10000),
+      // Workers support manual redirects; the 200 check below rejects every 3xx.
+      redirect: "manual", signal: AbortSignal.timeout(10000),
       headers: { Accept: asset.mime },
     });
     if (upstream.status !== 200 || upstream.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== asset.mime

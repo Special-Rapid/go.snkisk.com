@@ -10,7 +10,7 @@ const asset = { ...SHARE_PREVIEW_ASSET, bytes: bytes.length, sha256: createHash(
 test('verified proxy preserves exact bytes and public response while isolating upstream headers', async (t) => {
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, SHARE_PREVIEW_ASSET.url);
-    assert.equal(options.redirect, 'error');
+    assert.equal(options.redirect, 'manual');
     assert.equal(options.credentials, undefined);
     assert.deepEqual(options.headers, { Accept: 'image/jpeg' });
     assert.ok(options.signal instanceof AbortSignal);
