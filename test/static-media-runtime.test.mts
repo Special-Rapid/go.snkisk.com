@@ -34,7 +34,7 @@ test('Workers runtime publishes verified bytes and rejects redirects without fol
 
     for (const redirect of [301, 302, 303, 307, 308]) {
       upstream = () => new Response(null, { status: redirect, headers: { location: 'https://example.com/image.jpg' } });
-      const before = calls;
+      const before: number = calls;
       const bad = await mf.dispatchFetch('https://sinkaisoku.com/assets/share-preview-amber-waves.jpg');
       assert.equal(bad.status, 502);
       assert.equal(bad.headers.get('cache-control'), 'no-store');

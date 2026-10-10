@@ -8,10 +8,11 @@ const bytes = Uint8Array.from([0xff, 0xd8, 0xff, 0x40, 0xff, 0xd9]);
 const asset = { ...SHARE_PREVIEW_ASSET, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 
 test('verified proxy preserves exact bytes and public response while isolating upstream headers', async (t) => {
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
+  t.mock.method(globalThis, 'fetch', async (url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) => {
+    assert.ok(options);
     assert.equal(url, SHARE_PREVIEW_ASSET.url);
     assert.equal(options.redirect, 'manual');
-    assert.equal(options.credentials, undefined);
+    assert.equal(Reflect.get(options, 'credentials'), undefined);
     assert.deepEqual(options.headers, { Accept: 'image/jpeg' });
     assert.ok(options.signal instanceof AbortSignal);
     return new Response(bytes, { headers: { 'content-type': 'Image/JPEG; charset=binary', 'set-cookie': 'private=1', 'cache-control': 'private' } });
@@ -33,7 +34,7 @@ for (const [name, upstream] of [
   ['same-size hash mismatch', () => { const changed = bytes.slice(); changed[3] ^= 1; return new Response(changed, { headers: { 'content-type': 'image/jpeg' } }); }],
   ['network/offline failure', () => { throw new Error('offline'); }],
   ['body read failure', () => new Response(new ReadableStream({ start(controller) { controller.error(new Error('broken stream')); } }), { headers: { 'content-type': 'image/jpeg' } })],
-]) test(`${name} never publishes or publicly caches an unverified image`, async (t) => {
+] satisfies ReadonlyArray<readonly [string, () => Response]>) test(`${name} never publishes or publicly caches an unverified image`, async (t) => {
   t.mock.method(globalThis, 'fetch', upstream);
   const response = await proxyVerifiedImage(asset);
   assert.equal(response.status, 502);
@@ -67,13 +68,14 @@ test('invalid mapping cannot reach the network', async (t) => {
 
 test('existing public GET route uses only the pinned URL and needs no database/auth binding', async (t) => {
   let calls = 0;
-  t.mock.method(globalThis, 'fetch', async (url, options) => {
+  t.mock.method(globalThis, 'fetch', async (url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) => {
+    assert.ok(options);
     calls++;
     assert.equal(url, SHARE_PREVIEW_ASSET.url);
-    assert.equal(options.headers.Authorization, undefined);
+    assert.equal(new Headers(options.headers).get('Authorization'), null);
     return new Response(null, { status: 503 });
   });
-  const env = new Proxy({}, { get() { assert.fail('asset route accessed a binding'); } });
+  const env = new Proxy({ get DB(): D1Database { throw new Error('asset route accessed a binding'); } }, { get() { assert.fail('asset route accessed a binding'); } });
   for (const host of ['go.snkisk.com', 'sinkaisoku.com']) {
     const response = await worker.fetch(new Request(`https://${host}/assets/share-preview-amber-waves.jpg?untrusted=https://example.com/`, {
       headers: { Authorization: 'Bearer private' },
