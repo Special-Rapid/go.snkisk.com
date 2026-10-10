@@ -34,3 +34,9 @@
 [Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21)の `theme-bootstrap.ts` は共通画面のheadで `go_theme` を同期で1回読み、light/dark/autoだけを使います。欠落・無効値・storage例外はauto、`dataset.theme` と `style.colorScheme` を元の順で設定します。保存や言語切替は既存の処理に従います。themeの3値unionとDOM型でstrict検査し、型の強制変換は使いません。
 
 現在の `build:locked-page` / `check:locked-page` は固定5正本を対象にします。追加生成先は `src/theme-bootstrap-script.ts`、従来4生成物は同byteです。上の件数は導入履歴で、親Issue #7の残作業は手書き23箇所です。
+
+## 作成画面の用語翻訳
+
+[Issue #23](https://github.com/Special-Rapid/go.snkisk.com/issues/23)の `create-form-terms-locale.ts` は、初回実行時の文書言語が `en` の場合だけ開始し、その後は言語を再判定せずに有効期限・終了時表示・終了メッセージ・現地時間の4文言を翻訳します。初回RAF、追加NodeのMutationObserver、text walker、除外tagと前後の空白、同期走査の順序を維持します。追加textでは親を走査し、追加Elementではその要素を走査する既存の区別を保ちます。言語の決定・保存・切替はこの処理に移していません。
+
+辞書の欠落値は `string | undefined`、走査引数と配列はNode型としてstrict検査します。型の強制変換は使いません。現在の固定生成は6正本で、追加生成先は `src/create-form-terms-locale-script.ts`、従来5生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き22箇所です。

@@ -75,3 +75,9 @@ npm test
 ## テーマ初期化のTypeScript正本
 
 [Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21)のテーマ初期化を [browser/README.md](browser/README.md) の正本へ移しています。現在の固定生成は5件で、前段の件数は導入履歴です。保存値の同期読取、無効値・例外時のauto、head内の実行順を維持します。親Issue #7には23箇所の手書き埋込JSが残ります。
+
+## 作成画面の用語翻訳
+
+[Issue #23](https://github.com/Special-Rapid/go.snkisk.com/issues/23)の `create-form-terms-locale.ts` は、初回実行時の文書言語が `en` の場合だけ開始し、その後は言語を再判定せずに有効期限・終了時表示・終了メッセージ・現地時間の4文言を翻訳します。初回RAF、追加NodeのMutationObserver、text walker、除外tagと前後の空白、同期走査の順序を維持します。追加textでは親を走査し、追加Elementではその要素を走査する既存の区別を保ちます。言語の決定・保存・切替はこの処理に移していません。
+
+辞書の欠落値は `string | undefined`、走査引数と配列はNode型としてstrict検査します。型の強制変換は使いません。現在の固定生成は6正本で、追加生成先は `src/create-form-terms-locale-script.ts`、従来5生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き22箇所です。
