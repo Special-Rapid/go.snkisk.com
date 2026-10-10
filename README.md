@@ -70,3 +70,8 @@ npm test
 ### 条件見出しの翻訳の型移行
 
 [Issue #19](https://github.com/Special-Rapid/go.snkisk.com/issues/19)では条件見出しの翻訳を [ブラウザー用の正本](browser/README.md)へ移しました。現在の固定生成は4件です。辞書・遅延実行・入力イベント・回数表示を維持し、親Issue #7には24箇所の手書き埋込JSが残ります。
+
+
+## テーマ初期化のTypeScript正本
+
+[Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21)のテーマ初期化を [browser/README.md](browser/README.md) の正本へ移しています。現在の固定生成は5件で、前段の件数は導入履歴です。保存値の同期読取、無効値・例外時のauto、head内の実行順を維持します。親Issue #7には23箇所の手書き埋込JSが残ります。
