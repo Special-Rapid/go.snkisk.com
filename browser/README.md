@@ -27,3 +27,10 @@
 辞書の欠落値は型に反映し、既存のtruthy確認直後の代入だけに非null型注釈を使います。実行時の辞書参照回数・条件・文言を維持し、数値の辞書値やDOM代入はstrictで拒否します。生成JSの実行ASTは元のIIFEと同一です。
 
 現在の固定生成は上記の4正本で、追加生成先は `src/create-rule-heading-locale-script.ts` です。従来3生成物は同byteを維持します。前段の件数は導入履歴で、親Issue #7の残作業は手書き24箇所です。
+
+
+## テーマ初期化
+
+[Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21)の `theme-bootstrap.ts` は共通画面のheadで `go_theme` を同期で1回読み、light/dark/autoだけを使います。欠落・無効値・storage例外はauto、`dataset.theme` と `style.colorScheme` を元の順で設定します。保存や言語切替は既存の処理に従います。themeの3値unionとDOM型でstrict検査し、型の強制変換は使いません。
+
+現在の `build:locked-page` / `check:locked-page` は固定5正本を対象にします。追加生成先は `src/theme-bootstrap-script.ts`、従来4生成物は同byteです。上の件数は導入履歴で、親Issue #7の残作業は手書き23箇所です。
