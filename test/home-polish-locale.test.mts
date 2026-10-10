@@ -82,4 +82,3 @@ test("除外tag、空/未知値、空DOMを保持する", () => {
   for (const tag of ["SCRIPT", "STYLE", "TEXTAREA", "OPTION"]) { const text = new MockText(japanese[0], new MockElement(tag)); view.character(text); assert.equal(text.nodeValue, japanese[0]); }
   for (const value of ["unknown", "", null]) { const text = new MockText(value, view.body); view.character(text); assert.equal(text.nodeValue, value); }
 });
-
