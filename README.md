@@ -100,3 +100,9 @@ npm test
 [Issue #29](https://github.com/Special-Rapid/go.snkisk.com/issues/29)の `home-polish-locale.ts` は初回enで補助3文言の翻訳を開始し、後続は言語を再判定しません。親または祖先の `[data-no-i18n]` を除外し、除外tagと空白を保ちます。RAFは実行時点のbodyから全text Nodeを収集後に変換します。characterDataと追加textは対象だけを直接変換し、追加Elementは配下を走査します。
 
 辞書欠落値・変換/走査引数・Node配列の4型注釈だけを使い、型の強制変換はありません。固定生成は9正本、追加先は `src/home-polish-locale-script.ts`、従来8生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は19箇所です。
+
+### 入口期限の補助翻訳をstrict正本へ移行
+
+[Issue #31](https://github.com/Special-Rapid/go.snkisk.com/issues/31)の `entry-expiry-locale.ts` は初回enで開始し、後続は言語を再判定しません。textは親/祖先の `[data-no-i18n]` と除外tagを先に判定し、全収集後に空白を保って変換します。その後のplaceholder走査はroot自身を含まない子孫だけを対象とし、textの除外条件を使わない既存契約です。RAF時点body、characterDataと追加textの直接変換、追加Element走査、attributes監視なしを維持します。
+
+辞書欠落値・変換Node・走査Element・Node配列の4型注釈だけでstrict検査します。固定生成は10正本、追加先は `src/entry-expiry-locale-script.ts`、従来9生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は18箇所です。
