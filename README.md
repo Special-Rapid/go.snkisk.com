@@ -45,4 +45,9 @@ npm test
 
 テストはCDNアクセスをmockし、原本を再uploadしません。
 
-テストの手書きsourceは `test/*.test.mts` です。Node.js 22.18以降のTypeScript直接実行を使い、`npm run typecheck` はWorkerとテストの両方を厳格に型検査します。テストのJavaScript生成物は保存しません。Chrome拡張機能の `extension/popup.js` は移行Issue #7の後続段階で扱います。
+テストの手書きsourceは `test/*.test.mts` です。Node.js 22.18以降のTypeScript直接実行を使い、`npm run typecheck` はWorker・テスト・拡張機能・生成ツールを厳格に型検査します。テストのJavaScript生成物は保存しません。Chrome拡張機能の編集元と生成手順は [extension/README.md](extension/README.md) を参照してください。
+
+
+## 非公開作業記録の確認
+
+作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しません。専用worktreeではprimary checkoutの既存feature/task記録を更新して読み戻します。公開PRには確認結果だけを公開可能な範囲で記載し、レビューには非公開記録の実読結果を使います。記録本体は公開差分へ追加しません。
