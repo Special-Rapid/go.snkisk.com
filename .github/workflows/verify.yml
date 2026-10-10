@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run check:extension
+      - run: npm run check:locked-page
       - run: npm test
       - name: Verify Worker bundle without deployment
         run: npx wrangler deploy --dry-run --outdir "${{ runner.temp }}/go-worker-bundle"
