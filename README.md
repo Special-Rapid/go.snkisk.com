@@ -44,3 +44,5 @@ npm test
 ```
 
 テストはCDNアクセスをmockし、原本を再uploadしません。
+
+テストの手書きsourceは `test/*.test.mts` です。Node.js 22.18以降のTypeScript直接実行を使い、`npm run typecheck` はWorkerとテストの両方を厳格に型検査します。テストのJavaScript生成物は保存しません。Chrome拡張機能の `extension/popup.js` は移行Issue #7の後続段階で扱います。

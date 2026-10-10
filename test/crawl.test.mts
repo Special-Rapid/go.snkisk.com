@@ -1,14 +1,14 @@
-// Run with Node 22.18+ (native TypeScript stripping): node --test test/crawl.test.mjs
+// Run with Node 22.18+ (native TypeScript stripping): node --test test/crawl.test.mts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/index.ts';
 
 for (const host of ['go.snkisk.com', 'sinkaisoku.com', 'docs.go.snkisk.com', 'docs.sinkaisoku.com']) {
   test(`${host}: discovery needs no database and preserves private URL exclusions`, async () => {
-    const env = new Proxy({}, { get() { throw new Error('Discovery must not access bindings'); } });
+    const env = new Proxy({ get DB(): D1Database { throw new Error("Discovery must not access bindings"); } }, { get() { throw new Error('Discovery must not access bindings'); } });
     const robots = await worker.fetch(new Request(`https://${host}/robots.txt`), env);
     assert.equal(robots.status, 200);
-    assert.match(robots.headers.get('content-type'), /^text\/plain/);
+    assert.match(robots.headers.get('content-type') ?? '', /^text\/plain/);
     const text = await robots.text();
     const canonicalHost = host.startsWith('docs.') ? 'docs.sinkaisoku.com' : 'sinkaisoku.com';
     assert.ok(text.includes(`Sitemap: https://${canonicalHost}/sitemap.xml`));
@@ -23,7 +23,7 @@ for (const host of ['go.snkisk.com', 'sinkaisoku.com', 'docs.go.snkisk.com', 'do
     }
     const sitemap = await worker.fetch(new Request(`https://${host}/sitemap.xml`), env);
     assert.equal(sitemap.status, 200);
-    assert.match(sitemap.headers.get('content-type'), /^application\/xml/);
+    assert.match(sitemap.headers.get('content-type') ?? '', /^application\/xml/);
     const xml = await sitemap.text();
     const canonicalPath = host.startsWith('docs.') ? '/query' : '/';
     assert.ok(xml.includes(`<loc>https://${canonicalHost}${canonicalPath}</loc>`));

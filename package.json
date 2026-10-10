@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "db:apply:local": "wrangler d1 execute go_shortener --local --file=./schema.sql",
     "db:apply:remote": "wrangler d1 execute go_shortener --remote --file=./schema.sql",
     "db:migrate:link-behaviors:local": "wrangler d1 migrations apply go_shortener --local",
     "db:migrate:link-behaviors:remote": "wrangler d1 migrations apply go_shortener --remote",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261006.1",
+    "@types/node": "^22.20.5",
     "miniflare": "5.20261006.1-alpha",
     "typescript": "^5.0.0",
     "wrangler": "4.149.0"
