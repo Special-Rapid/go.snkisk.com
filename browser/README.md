@@ -19,3 +19,11 @@
 [Issue #17](https://github.com/Special-Rapid/go.snkisk.com/issues/17)の `create-service-guide-locale.ts` は、案内見出し・公開docsリンク・拡張機能の開発中表示を既存の日本語/英語で同期します。`go:localechange` と一度だけの `DOMContentLoaded` を元の順序で登録し、イベント時点の文書言語が `en` のとき英語、それ以外は日本語を使います。`data-service-guide` の既存keyだけに対応し、言語の決定・保存やdocsの本文を変更しません。
 
 現在の `build:locked-page` / `check:locked-page` は公開前リンク・プレビューラベル・案内翻訳の固定3正本を対象にします。追加生成先は `src/create-service-guide-locale-script.ts`、従来2生成物は同byteで維持します。上の各移行説明は導入順を示し、現在の生成件数は3件です。辞書の値とDOM型をstrict検査し、実行AST・挿入位置・表示文言は維持します。親Issue #7には他25箇所の手書き埋込JSが残ります。
+
+## 条件見出しの翻訳
+
+[Issue #19](https://github.com/Special-Rapid/go.snkisk.com/issues/19)の `create-rule-heading-locale.ts` は、初回の0ms timerが実行される時点で文書言語が `en` の場合だけ、既存の条件見出し・option・回数表示を翻訳します。登録済みinput/changeはそれぞれ0ms timerで再同期します。初回判定後に文書言語を再判定しない既存挙動を保ち、言語設定の保存・切替処理は変更しません。
+
+辞書の欠落値は型に反映し、既存のtruthy確認直後の代入だけに非null型注釈を使います。実行時の辞書参照回数・条件・文言を維持し、数値の辞書値やDOM代入はstrictで拒否します。生成JSの実行ASTは元のIIFEと同一です。
+
+現在の固定生成は上記の4正本で、追加生成先は `src/create-rule-heading-locale-script.ts` です。従来3生成物は同byteを維持します。前段の件数は導入履歴で、親Issue #7の残作業は手書き24箇所です。
