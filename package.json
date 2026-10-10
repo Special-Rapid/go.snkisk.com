@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json && tsc -p tsconfig.extension.json --noEmit && tsc -p tsconfig.tools.json",
+    "build:extension": "node tools/build-extension.mts",
+    "check:extension": "node tools/build-extension.mts --check",
     "db:apply:local": "wrangler d1 execute go_shortener --local --file=./schema.sql",
     "db:apply:remote": "wrangler d1 execute go_shortener --remote --file=./schema.sql",
     "db:migrate:link-behaviors:local": "wrangler d1 migrations apply go_shortener --local",
