@@ -5,3 +5,10 @@
 `npm run build:locked-page` は `src/locked-page-script.ts` を生成し、`npm run check:locked-page` は同じ生成結果との一致を確認します。生成先を手で編集しません。CIでも一致検査を行います。
 
 初回の型移行は元inlineの実行処理と表示文言を維持します。テーマ・言語・statusの翻訳は既存のWorker共通画面へ従います。このscriptはその設定・保存・切替を管理しません。別ページのinline処理は後続の移行対象です。
+
+
+## 作成画面のプレビューラベル
+
+[Issue #15](https://github.com/Special-Rapid/go.snkisk.com/issues/15)の `create-preview-label.ts` は、DOMContentLoaded時に既存プレビューfieldsetの `aria-label` を現在の文書言語で設定します。`en` は `Social preview`、それ以外は `SNSプレビュー` とする既存判定、selectorとHTMLElement確認を維持します。言語設定の保存・切替をこのscriptへ移したものではありません。
+
+既存コマンド `build:locked-page` / `check:locked-page` は、公開前リンクとプレビューラベルの固定2正本を対象にします。生成先は `src/locked-page-script.ts` と `src/create-preview-label-script.ts` です。DOM.Iterableを含むstrictブラウザー設定で、実行可能なclassic scriptを生成します。生成JSの文字列を直接編集しません。他26箇所の手書き埋込JSは親Issue #7の残作業です。

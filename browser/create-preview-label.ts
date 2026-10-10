@@ -1,0 +1,1 @@
+(()=>document.addEventListener("DOMContentLoaded",()=>{for(const fieldset of document.querySelectorAll(".create-studio [data-create-preview-label]")){if(fieldset instanceof HTMLElement)fieldset.setAttribute("aria-label",document.documentElement.lang==="en"?"Social preview":"SNSプレビュー")}}))()
