@@ -29,6 +29,7 @@ const entries = [
   { source: "entry-expiry-locale", target: "entry-expiry-locale-script", symbol: "entryExpiryLocaleCode" },
   { source: "completion-locale", target: "completion-locale-script", symbol: "completionLocaleCode" },
   { source: "create-form-locale", target: "create-form-locale-script", symbol: "createFormLocaleCode" },
+  { source: "validation-locale", target: "validation-locale-script", symbol: "validationLocaleCode" },
 ];
 if (parsed.fileNames.length !== entries.length || parsed.fileNames.some((name, index) => resolve(name) !== join(root, `browser/${entries[index].source}.ts`))) {
   throw new Error("登録されたブラウザー用の指定sourceだけを生成できます。");
@@ -60,7 +61,7 @@ try {
       await writeFile(output.target, output.generated);
     }
   }
-  console.log(args[0] === "--check" ? "埋込script生成12件の一致PASS" : "埋込script12件を生成しました。");
+  console.log(args[0] === "--check" ? "埋込script生成13件の一致PASS" : "埋込script13件を生成しました。");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
