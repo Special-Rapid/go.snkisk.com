@@ -27,6 +27,7 @@
     "browser/entry-expiry-locale.ts",
     "browser/completion-locale.ts",
     "browser/create-form-locale.ts",
-    "browser/validation-locale.ts"
+    "browser/validation-locale.ts",
+    "browser/condition-card.ts"
   ]
 }
