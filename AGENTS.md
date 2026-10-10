@@ -13,5 +13,3 @@ Use only these dashboard transitions: `OTHER` → `PLAN` → `NOW` → `DONE`. A
 ## Records
 
 Record Plan/Do/Check/Act explicitly in the active task. Each feature has `REQUEST.md`, `SPEC.md`, and `STATE.md`; preserve a redacted original request in `REQUEST.md`. UI-capable work also updates the state matrix and uses the UI review rubric for visible changes.
-
-作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しない。専用worktreeではprimary checkoutの既存feature/task記録を更新し、読み戻しで確認する。公開PRでは記録確認の結果だけを公開可能な範囲で要約する。PR差分に非公開記録がないことを理由に公開追加を求めない。
