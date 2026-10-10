@@ -51,3 +51,8 @@ npm test
 ## 非公開作業記録の確認
 
 作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しません。専用worktreeではprimary checkoutの既存feature/task記録を更新して読み戻します。公開PRには確認結果だけを公開可能な範囲で記載し、レビューには非公開記録の実読結果を使います。記録本体は公開差分へ追加しません。
+
+
+## 公開前リンクのブラウザー処理
+
+公開時刻後の自動遷移は [browser/README.md](browser/README.md) に編集元と生成契約を記載しています。`npm run typecheck` はこの1つのブラウザー処理もstrict検査し、`npm run build:locked-page` でWorkerへ埋め込むstringを生成、`npm run check:locked-page` で一致を確認します。Chrome拡張の生成とは別の入力・生成先です。公開前リンク画面の表示と操作を維持し、他のインラインJSは親Issue #7の後続移行に残します。

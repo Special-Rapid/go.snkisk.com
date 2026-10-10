@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "None",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [],
+    "strict": true,
+    "alwaysStrict": false,
+    "noEmit": true,
+    "noEmitOnError": true,
+    "rootDir": "browser"
+  },
+  "files": [
+    "browser/locked-page-auto-open.ts"
+  ]
+}
