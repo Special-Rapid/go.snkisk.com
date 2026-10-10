@@ -61,3 +61,8 @@ npm test
 ### 作成画面のプレビューラベルの型移行
 
 [Issue #15](https://github.com/Special-Rapid/go.snkisk.com/issues/15)ではプレビューラベルの埋込JSを [ブラウザー用の正本](browser/README.md)へ移しました。従来の `npm run build:locked-page` / `npm run check:locked-page` を維持し、公開前リンクと合わせた固定2件の生成・一致検査を行います。既存のラベル文言・イベント・HTML挿入位置を保ち、他の埋込JSと公開docsは変更しません。
+
+
+### 作成画面の案内翻訳の型移行
+
+[Issue #17](https://github.com/Special-Rapid/go.snkisk.com/issues/17)では案内翻訳の1単位を [ブラウザー用の正本](browser/README.md)へ移しました。現在の既存生成コマンドは固定3件を対象にし、導入済み2生成物のbyteと互換性を維持します。日本語/英語の案内文言、言語変更とDOMContentLoadedのイベント、公開docsへのリンクは同じです。残25inlineは親Issue #7の後続作業です。
