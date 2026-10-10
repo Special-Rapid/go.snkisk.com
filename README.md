@@ -114,3 +114,7 @@ npm test
 ### 作成フォーム45文言の翻訳
 
 `browser/create-form-locale.ts` をstrict正本とし、固定12生成の `src/create-form-locale-script.ts` を埋め込みます。初回enだけ開始し、各convertでもlangを再判定します。en開始後の非en中は変換せず、enへ戻った通知では変換します。SCRIPT/STYLE/TEXTAREAの3tagを除外し、OPTIONは変換します。data-no-i18n祖先除外を追加しない既存契約です。空白保持、RAF時点body、全Text収集後変換、characterData/追加Text直接変換と追加Element走査、監視3項目と挿入順を維持します。4型注釈だけを追加し、旧11生成物のbyteを保持します。
+
+### 入力検証翻訳と日時整形
+
+[Issue #37](https://github.com/Special-Rapid/go.snkisk.com/issues/37)の `browser/validation-locale.ts` をstrict正本とし、固定13生成の `src/validation-locale-script.ts` を同位置へ埋め込みます。22固定文言と4正規表現、捕捉値・空白・親/祖先data-no-i18n・除外4tagを保持します。初回enだけ開始し、後続の言語は再判定しません。RAF時点bodyの全Text収集後変換に続いて日時を整形し、characterData/追加Text直接変換と追加Element走査では日時を整形しません。DateのNaN判定とIntlのzone/shortOffset/dateStyle/timeStyle、監視3項目と順序を維持します。辞書欠落値・string引数・Node/Node配列と、既存HTML time要素向けquerySelectorAllのHTMLElement型引数だけを追加します。型の強制変換はなく、旧12生成物のbyteを保ちます。前段の件数は履歴で、親 #7の手書き残作業は15箇所です。
