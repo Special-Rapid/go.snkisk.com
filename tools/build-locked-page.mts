@@ -16,8 +16,12 @@ const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
 if (parsed.errors.length) throw new Error(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
   getCurrentDirectory: () => root, getCanonicalFileName: (name) => name, getNewLine: () => "\n",
 }));
-if (parsed.fileNames.length !== 1 || resolve(parsed.fileNames[0]) !== join(root, "browser/locked-page-auto-open.ts")) {
-  throw new Error("公開前リンク用の指定sourceだけを生成できます。");
+const entries = [
+  { source: "locked-page-auto-open", target: "locked-page-script", symbol: "lockedPageScript" },
+  { source: "create-preview-label", target: "create-preview-label-script", symbol: "createPreviewLabelScript" },
+];
+if (parsed.fileNames.length !== entries.length || parsed.fileNames.some((name, index) => resolve(name) !== join(root, `browser/${entries[index].source}.ts`))) {
+  throw new Error("公開前リンクとプレビューラベルの指定sourceだけを生成できます。");
 }
 const temporary = await mkdtemp(join(tmpdir(), "go-locked-page-build-"));
 try {
@@ -29,18 +33,24 @@ try {
       getCurrentDirectory: () => root, getCanonicalFileName: (name) => name, getNewLine: () => "\n",
     }));
   }
-  const script = await readFile(join(temporary, "locked-page-auto-open.js"), "utf8");
-  const generated = `// tools/build-locked-page.mtsの生成物。編集元はbrowser/locked-page-auto-open.tsです。\nexport const lockedPageScript = ${JSON.stringify(script)};\n`;
-  const target = join(root, "src/locked-page-script.ts");
-  if (args[0] === "--check") {
-    if (generated !== await readFile(target, "utf8")) {
-      throw new Error("公開前リンクの生成物が不一致です。npm run build:locked-pageで再生成してください。");
+  // 全出力を読み取ってから、固定の生成先だけを比較・更新する。
+  const outputs = await Promise.all(entries.map(async (entry) => {
+    const script = await readFile(join(temporary, `${entry.source}.js`), "utf8");
+    return {
+      generated: `// tools/build-locked-page.mtsの生成物。編集元はbrowser/${entry.source}.tsです。\nexport const ${entry.symbol} = ${JSON.stringify(script)};\n`,
+      target: join(root, `src/${entry.target}.ts`),
+    };
+  }));
+  for (const output of outputs) {
+    if (args[0] === "--check") {
+      if (output.generated !== await readFile(output.target, "utf8")) {
+        throw new Error("埋込scriptの生成物が不一致です。npm run build:locked-pageで再生成してください。");
+      }
+    } else {
+      await writeFile(output.target, output.generated);
     }
-    console.log("公開前リンクの生成物一致PASS");
-  } else {
-    await writeFile(target, generated);
-    console.log("公開前リンク用scriptを生成しました。");
   }
+  console.log(args[0] === "--check" ? "埋込script生成2件の一致PASS" : "埋込script2件を生成しました。");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

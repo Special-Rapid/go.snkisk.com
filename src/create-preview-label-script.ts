@@ -1,0 +1,2 @@
+// tools/build-locked-page.mtsの生成物。編集元はbrowser/create-preview-label.tsです。
+export const createPreviewLabelScript = "(() => document.addEventListener(\"DOMContentLoaded\", () => { for (const fieldset of document.querySelectorAll(\".create-studio [data-create-preview-label]\")) {\n    if (fieldset instanceof HTMLElement)\n        fieldset.setAttribute(\"aria-label\", document.documentElement.lang === \"en\" ? \"Social preview\" : \"SNSプレビュー\");\n} }))();\n";

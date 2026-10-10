@@ -56,3 +56,8 @@ npm test
 ## 公開前リンクのブラウザー処理
 
 公開時刻後の自動遷移は [browser/README.md](browser/README.md) に編集元と生成契約を記載しています。`npm run typecheck` はこの1つのブラウザー処理もstrict検査し、`npm run build:locked-page` でWorkerへ埋め込むstringを生成、`npm run check:locked-page` で一致を確認します。Chrome拡張の生成とは別の入力・生成先です。公開前リンク画面の表示と操作を維持し、他のインラインJSは親Issue #7の後続移行に残します。
+
+
+### 作成画面のプレビューラベルの型移行
+
+[Issue #15](https://github.com/Special-Rapid/go.snkisk.com/issues/15)ではプレビューラベルの埋込JSを [ブラウザー用の正本](browser/README.md)へ移しました。従来の `npm run build:locked-page` / `npm run check:locked-page` を維持し、公開前リンクと合わせた固定2件の生成・一致検査を行います。既存のラベル文言・イベント・HTML挿入位置を保ち、他の埋込JSと公開docsは変更しません。

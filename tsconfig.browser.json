@@ -4,7 +4,8 @@
     "module": "None",
     "lib": [
       "ES2022",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "types": [],
     "strict": true,
@@ -14,6 +15,7 @@
     "rootDir": "browser"
   },
   "files": [
-    "browser/locked-page-auto-open.ts"
+    "browser/locked-page-auto-open.ts",
+    "browser/create-preview-label.ts"
   ]
 }
