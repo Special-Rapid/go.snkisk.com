@@ -19,9 +19,10 @@ if (parsed.errors.length) throw new Error(ts.formatDiagnosticsWithColorAndContex
 const entries = [
   { source: "locked-page-auto-open", target: "locked-page-script", symbol: "lockedPageScript" },
   { source: "create-preview-label", target: "create-preview-label-script", symbol: "createPreviewLabelScript" },
+  { source: "create-service-guide-locale", target: "create-service-guide-locale-script", symbol: "createServiceGuideLocaleScript" },
 ];
 if (parsed.fileNames.length !== entries.length || parsed.fileNames.some((name, index) => resolve(name) !== join(root, `browser/${entries[index].source}.ts`))) {
-  throw new Error("公開前リンクとプレビューラベルの指定sourceだけを生成できます。");
+  throw new Error("登録されたブラウザー用の指定sourceだけを生成できます。");
 }
 const temporary = await mkdtemp(join(tmpdir(), "go-locked-page-build-"));
 try {
@@ -50,7 +51,7 @@ try {
       await writeFile(output.target, output.generated);
     }
   }
-  console.log(args[0] === "--check" ? "埋込script生成2件の一致PASS" : "埋込script2件を生成しました。");
+  console.log(args[0] === "--check" ? "埋込script生成3件の一致PASS" : "埋込script3件を生成しました。");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
