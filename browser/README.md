@@ -65,3 +65,7 @@
 [Issue #31](https://github.com/Special-Rapid/go.snkisk.com/issues/31)の `entry-expiry-locale.ts` は初回enで開始し、後続は言語を再判定しません。textは親/祖先の `[data-no-i18n]` と除外tagを先に判定し、全収集後に空白を保って変換します。その後のplaceholder走査はroot自身を含まない子孫だけを対象とし、textの除外条件を使わない既存契約です。RAF時点body、characterDataと追加textの直接変換、追加Element走査、attributes監視なしを維持します。
 
 辞書欠落値・変換Node・走査Element・Node配列の4型注釈だけでstrict検査します。固定生成は10正本、追加先は `src/entry-expiry-locale-script.ts`、従来9生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は18箇所です。
+
+### 完了・管理文言の補助翻訳
+
+`browser/completion-locale.ts` をstrict正本とし、固定11生成の `src/completion-locale-script.ts` を共通ページへ埋め込みます。初回enだけで開始し、後続の言語変更は再判定しません。textの親・祖先 `data-no-i18n` と除外tag、空白保持、RAF時点body、全text収集後変換、characterData/追加textの直接変換と追加Element走査を維持します。辞書12文言のうち `期限: ` は末尾空白を含むkeyであり、trim後のlookupでは一致しない既存挙動を保持します。4型注釈だけを追加し、旧10生成物のbyteと監視3項目・挿入順を保ちます。
