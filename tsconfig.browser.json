@@ -30,6 +30,7 @@
     "browser/validation-locale.ts",
     "browser/condition-card.ts",
     "browser/create-state.ts",
-    "browser/condition-form-sync.ts"
+    "browser/condition-form-sync.ts",
+    "browser/setting-info.ts"
   ]
 }

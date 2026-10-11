@@ -130,3 +130,7 @@ npm test
 ### 条件フォームの同期
 
 [Issue #43](https://github.com/Special-Rapid/go.snkisk.com/issues/43)の `browser/condition-form-sync.ts` をstrict正本とし、固定16生成の `src/condition-form-sync-script.ts` を同位置へ埋め込みます。無効条件の既存日本語表示、切替設定によるSNSプレビューfieldsetとnotice、input/change/conditioncardsyncの即時同期、microtask後のsubmit登録と無効日時inputと同名hiddenの除去を維持します。string注釈4と現HTMLの日時inputに型引数1だけを追加し、型の強制変換は使いません。旧15生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は12箇所です。
+
+### 設定説明とinfo開閉
+
+[Issue #45](https://github.com/Special-Rapid/go.snkisk.com/issues/45)の `browser/setting-info.ts` をstrict正本とし、固定17生成の `src/setting-info-script.ts` を同位置へ埋め込みます。現在言語での見出し・状態・説明、infoのclick/focus/blur/hover、focus中leaveの維持、hashと入力エラーによるdetails展開、load/localechange/toggle同期の順序を保ちます。辞書の型とbutton/tooltip/valueの4注釈だけを追加し、未知keyのundefinedと旧16生成byteを保持します。前段件数は履歴で、親 #7の手書き残作業は11箇所です。
