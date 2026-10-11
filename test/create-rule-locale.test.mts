@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { runInNewContext } from "node:vm";
+import { createRuleLocaleCode } from "../src/create-rule-locale-script.ts";
+class ElementMock { textContent: string | null = "original"; one=new Map<string,ElementMock>(); listeners=new Map<string,(()=>void)[]>(); querySelector(s:string){return this.one.get(s)??null;} addEventListener(n:string,f:()=>void){this.listeners.set(n,[...this.listeners.get(n)??[],f]);} fire(n:string){for(const f of this.listeners.get(n)??[])f();} }
+class InputMock extends ElementMock {value="";checked=false;}
+class TextareaMock extends ElementMock {value="";}
+class FormMock extends ElementMock {controls:ElementMock[]=[];named=new Map<string,ElementMock>();elements={namedItem:(n:string)=>this.named.get(n)??null};querySelectorAll(s:string){assert.equal(s,"input,textarea,select");return this.controls;}}
+function page(lang="en") {
+ const studio=new ElementMock(),form=new FormMock(),toggle=new InputMock(),root={lang},timers:(()=>void)[]=[],calls:string[]=[];
+ studio.one.set("form.create-form",form);for(const selector of ["[data-rule-expiry]","[data-rule-limit]","[data-rule-schedule]"])studio.one.set(selector,new ElementMock());
+ const document={documentElement:root,querySelector(s:string){calls.push(s);return s===".create-studio"?studio:s==="#schedule_enabled"?toggle:null;}};
+ return {studio,form,toggle,root,timers,calls,document,input(name:string,value:string,area=false){const input=area?new TextareaMock():new InputMock();input.value=value;form.named.set(name,input);form.controls.push(input);return input;},start(){runInNewContext(createRuleLocaleCode,{document,HTMLElement:ElementMock,HTMLFormElement:FormMock,HTMLInputElement:InputMock,HTMLTextAreaElement:TextareaMock,setTimeout(f:()=>void,delay:number){assert.equal(delay,0);timers.push(f);}});},flush(){while(timers.length)timers.shift()?.();},text(selector:string){return studio.one.get(selector)?.textContent;}};
+}
+test("最初のtimer後にtrimした期限と回数と切替を同期する",()=>{const p=page();p.input("expires_at"," 2026-10-12T12:00 ");p.input("max_open_count"," 3 ");p.input("scheduled_target_url"," https://example.com ");p.input("switch_at"," 2026-10-13T13:00 ");p.toggle.checked=true;p.start();assert.equal(p.text("[data-rule-expiry]"),"original");assert.equal(p.timers.length,1);p.flush();assert.equal(p.text("[data-rule-expiry]"),"2026-10-12 12:00 → End the link");assert.equal(p.text("[data-rule-limit]"),"After 3 visits → End the link");assert.equal(p.text("[data-rule-schedule]"),"From 2026-10-13 13:00 → https://example.com");});
+test("en判定はtimer実行時で他言語ならformへ触れない",()=>{for(const lang of ["ja","fr","en-US",""]){const p=page(lang);p.start();p.flush();assert.deepEqual(p.calls,[]);assert.equal(p.text("[data-rule-limit]"),"original");}const p=page("ja");p.start();p.root.lang="en";p.flush();assert.equal(p.text("[data-rule-limit]"),"Not set");});
+test("toggle offや値不足は既存Not setを維持する",()=>{for(const enabled of [false,true]){const p=page();p.input("scheduled_target_url","https://example.com");p.toggle.checked=enabled;p.start();p.flush();assert.equal(p.text("[data-rule-schedule]"),"Not set");}});
+test("inputとchangeは別timerで同期し直前の値を読む",()=>{const p=page(),input=p.input("max_open_count","2");p.start();p.flush();input.value="4";input.fire("input");input.fire("change");assert.equal(p.timers.length,2);assert.equal(p.text("[data-rule-limit]"),"After 2 visits → End the link");p.root.lang="ja";p.flush();assert.equal(p.text("[data-rule-limit]"),"After 4 visits → End the link");});
+test("textareaは読めるが非対象fieldとmissing値は既存fallback",()=>{const p=page();p.input("expires_at"," 2026-10-12T12:00 ",true);p.form.named.set("max_open_count",new ElementMock());p.start();p.flush();assert.equal(p.text("[data-rule-expiry]"),"2026-10-12 12:00 → End the link");assert.equal(p.text("[data-rule-limit]"),"Not set");});
+test("form型が違えばlistenerとsummary更新を行わない",()=>{const p=page(),input=p.input("max_open_count","3");p.studio.one.set("form.create-form",new ElementMock());p.start();p.flush();assert.equal(input.listeners.size,0);assert.equal(p.text("[data-rule-limit]"),"original");});
