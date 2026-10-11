@@ -146,3 +146,7 @@ npm test
 ### 未使用の補助翻訳定義
 
 [Issue #51](https://github.com/Special-Rapid/go.snkisk.com/issues/51)の `browser/localization-polish.ts` をstrict正本とし、固定20生成の `src/localization-polish-script.ts` から既存定義を復元します。現在の `localizationPolishScript` は定義のみでHTMLへ挿入されていません。呼出し・埋込の追加や定義の削除は行わず、初期en判定、19文言、空白、除外tag、zone/title、optional翻訳callback、MutationObserver処理と例外を保持します。固定 `SERVICE_HOST` の補間は一意markerで復元し、旧19生成byteと完成Worker HTML全文を維持します。前段件数は履歴です。親 #7の手書き残作業は8箇所です。
+
+### 共有翻訳処理
+
+[Issue #53](https://github.com/Special-Rapid/go.snkisk.com/issues/53)の `browser/localization-core.ts` をstrict正本とし、固定21生成の `src/localization-core-script.ts` を既存の共有layoutへ同じ位置で埋め込みます。保存済みja/enをOSより優先し、それ以外は既存のOS判定（ja候補があればja、それ以外en）を保持します。manual選択の保存、auto時の削除、text・placeholder・altの辞書、observerの停止と再接続、locale通知の順序を変えません。型注釈だけで既存のprototype key例外やzone文言も保持し、今回に挙動改善を混ぜません。旧20生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は7箇所です。

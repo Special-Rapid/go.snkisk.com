@@ -34,6 +34,7 @@
     "browser/setting-info.ts",
     "browser/localization-after.ts",
     "browser/docs-query.ts",
-    "browser/localization-polish.ts"
+    "browser/localization-polish.ts",
+    "browser/localization-core.ts"
   ]
 }
