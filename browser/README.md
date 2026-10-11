@@ -125,3 +125,7 @@
 ## 言語・テーマ選択ボタンの型付き正本
 
 [Issue #61](https://github.com/Special-Rapid/go.snkisk.com/issues/61)の共有layoutの選択ボタン処理は `browser/locale-picker.ts` を編集し、固定生成 `src/locale-picker-script.ts` を従来のHTML/CSS・挿入順で埋め込みます。生成対象は25件です。click・方向キー/Home/End・RAF focus、テーマradio接続、言語callback/select fallback、OS追従・observer・meta同期、保存値、再取得・未知key/prototype値・既存例外を維持します。消去されるnon-null1とcallback引数型は新しい実行時検証ではありません。手書き残3箇所、実ブラウザー確認、本番反映は別作業です。
+
+## フォーム復元処理の型付き正本
+
+[Issue #63](https://github.com/Special-Rapid/go.snkisk.com/issues/63)の作成フォーム保存・復元は `browser/create-form-recovery.ts` を編集し、固定生成 `src/create-form-recovery-script.ts` を従来の位置へ埋め込みます。生成対象は26件です。submit listenerとrestoreの順序、sessionStorageの保存除外・既存復元・例外、各controlとtoggle、formイベントとerror focus呼出しを維持します。JSON.parse由来の型注釈は未検証のproducer契約で、新しい実行時検証ではありません。異常値・継承key・繰り返し取得・途中例外の挙動も保ちます。手書き残2箇所、実ブラウザー確認、本番反映は別作業です。
