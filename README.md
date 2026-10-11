@@ -158,3 +158,7 @@ npm test
 ## 条件概要の英語同期の型付き正本
 
 [Issue #57](https://github.com/Special-Rapid/go.snkisk.com/issues/57)の条件概要の英語同期は `browser/create-rule-locale.ts` を編集し、固定生成 `src/create-rule-locale-script.ts` を従来の位置へ埋め込みます。生成対象は23件です。timer実行時のen判定、期限・回数・切替の文言、input/change後の再同期、DOMの読み取り回数と既存例外を維持します。繰り返し取得の型構文は実行時に消去され、新しい入力検証ではありません。手書き残5箇所と実ブラウザー確認・本番反映は別作業です。
+
+## テーマ処理の型付き正本
+
+[Issue #59](https://github.com/Special-Rapid/go.snkisk.com/issues/59)の共有layoutのテーマ処理は `browser/theme-controls.ts` を編集し、固定生成 `src/theme-controls-script.ts` を従来の位置へ埋め込みます。生成対象は24件です。System/Light/Dark、OS変更追従、手動保存、言語別ラベル、menu閉じとsummary focus、legacy listener、datasetの読み取り回数と既存例外を維持します。画面上のテーマ選択は既存radioへ渡されます。消去される型generic/non-null構文は新しい実行時検証ではありません。手書き残4箇所、実ブラウザー確認、本番反映は別作業です。
