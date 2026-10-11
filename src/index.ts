@@ -1,3 +1,4 @@
+import { extensionCreateCode } from "./extension-create-script.ts";
 import { createFormRecoveryCode } from "./create-form-recovery-script.ts";
 import { localePickerCode } from "./locale-picker-script.ts";
 import { themeControlsCode } from "./theme-controls-script.ts";
@@ -716,7 +717,7 @@ async function getAudiencePublicTarget(env: Env, slug: string): Promise<PublicTa
 
 function renderExtensionCreate(env: Env): Response {
   const turnstile = env.TURNSTILE_SITE_KEY ? `<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><div class="cf-turnstile" data-sitekey="${escapeHtml(env.TURNSTILE_SITE_KEY)}" data-action="${TURNSTILE_ACTION}" data-size="invisible" data-callback="goExtensionTurnstile" data-expired-callback="goExtensionTurnstileError" data-error-callback="goExtensionTurnstileError"></div>` : "";
-  const document = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:13px system-ui,sans-serif;color:#4c3926;background:transparent}.cf-turnstile{min-height:65px}.message{margin:0 0 8px}</style></head><body><p class="message" aria-live="polite">安全確認中…</p>${turnstile}<script>(()=>{let targetUrl="";const extensionOrigin=${JSON.stringify(EXTENSION_ORIGIN)},tell=(type,detail={})=>parent.postMessage({source:"go-extension-create",type,...detail},extensionOrigin);window.goExtensionTurnstile=token=>{if(targetUrl&&typeof token==="string")tell("token",{targetUrl,turnstileToken:token})};window.goExtensionTurnstileError=()=>tell("error",{message:"安全確認を完了できませんでした。"});window.addEventListener("message",event=>{if(event.origin!==extensionOrigin||event.source!==parent||!event.data||event.data.source!=="go-extension-popup")return;const value=typeof event.data.targetUrl==="string"?event.data.targetUrl:"";if(!value){tell("error",{message:"URLを取得できませんでした。"});return}targetUrl=value});tell("ready")})()</script></body></html>`;
+  const document = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:13px system-ui,sans-serif;color:#4c3926;background:transparent}.cf-turnstile{min-height:65px}.message{margin:0 0 8px}</style></head><body><p class="message" aria-live="polite">安全確認中…</p>${turnstile}<script>${extensionCreateCode.replace(JSON.stringify("___GO_EXTENSION_CREATE_ORIGIN___"), () => JSON.stringify(EXTENSION_ORIGIN))}</script></body></html>`;
   return new Response(document, { headers: extensionHtmlHeaders(Boolean(turnstile)) });
 }
 async function handleExtensionCreate(request: Request, env: Env): Promise<Response> {
