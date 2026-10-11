@@ -138,3 +138,7 @@ npm test
 ### 言語切替後の補助翻訳
 
 [Issue #47](https://github.com/Special-Rapid/go.snkisk.com/issues/47)の `browser/localization-after.ts` をstrict正本とし、固定18生成の `src/localization-after-script.ts` を同位置へ埋め込みます。既存の文字列辞書登録・文字列翻訳callback2つをoptionalとして表し、不在時のfallback、19文言の辞書登録、RAF走査と除外tag、日時zone、title suffix、input/change後のtimer、locale通知の順序を保ちます。生成scriptの一意markerを現在の固定 `SERVICE_HOST` で置換し、外部入力の新経路は作りません。旧17生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は10箇所です。
+
+### クエリー設定案内の補助翻訳
+
+[Issue #49](https://github.com/Special-Rapid/go.snkisk.com/issues/49)の `browser/docs-query.ts` をstrict正本とし、固定19生成の `src/docs-query-script.ts` を同位置へ埋め込みます。ja/enの辞書と未知keyのundefined、現在のlangによる文言とtitle、locale通知、DOMContentLoaded onceの順序を保ちます。現HTMLの `data-docs-copy` は8要素で、辞書の15項目すべてがDOMにあるとは扱いません。既存 `escapeHtml(docsOrigin)` は一意markerをcallbackで置換し、replacement特殊文字をそのまま保ちます。旧18生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は9箇所です。

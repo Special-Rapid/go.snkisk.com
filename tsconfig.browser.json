@@ -32,6 +32,7 @@
     "browser/create-state.ts",
     "browser/condition-form-sync.ts",
     "browser/setting-info.ts",
-    "browser/localization-after.ts"
+    "browser/localization-after.ts",
+    "browser/docs-query.ts"
   ]
 }
