@@ -29,6 +29,7 @@
     "browser/create-form-locale.ts",
     "browser/validation-locale.ts",
     "browser/condition-card.ts",
-    "browser/create-state.ts"
+    "browser/create-state.ts",
+    "browser/condition-form-sync.ts"
   ]
 }
