@@ -133,3 +133,7 @@
 ## 拡張機能との通信処理の型付き正本
 
 [Issue #65](https://github.com/Special-Rapid/go.snkisk.com/issues/65)のbridgeは `browser/extension-create.ts` を編集し、固定生成 `src/extension-create-script.ts` を既存位置へ埋め込みます。生成対象は27件です。既存のtrusted origin定数だけをJSON文字列へ置換し、origin・親window・popup sourceの照合、targetUrlの二回取得、ready/error/token通知とTurnstile callbackの順序を維持します。MessageEventのdata型は未検証のproducer契約で、実行時validatorを追加しません。異常値・繰り返しgetter・部分例外と空string tokenの既存条件も保ちます。手書き残1単位、実Chrome/Turnstile確認、本番反映は別作業です。
+
+## 共有layout末尾の型付き正本
+
+[Issue #67](https://github.com/Special-Rapid/go.snkisk.com/issues/67)の共有layout末尾の全12文は `browser/layout-tail.ts` を編集し、固定生成 `src/layout-tail-script.ts` を従来の位置へ埋め込みます。生成対象は28件です。コピー・合言葉表示・slug確認・現地時刻・利用回数・条件切替・SNSプレビュー・フォーム概要の順序と既存例外を維持します。JSONレスポンスの型は未検証のproducer契約で、実行時validatorを追加しません。共有host定数は一意markerをcallbackで置換します。旧27生成byteを保持し、このDraftで手書きJS移行の残単位は0です。実ブラウザー確認・積み重ねたPRの統合・本番反映は別作業です。

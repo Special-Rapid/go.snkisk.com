@@ -41,6 +41,7 @@
     "browser/theme-controls.ts",
     "browser/locale-picker.ts",
     "browser/create-form-recovery.ts",
-    "browser/extension-create.ts"
+    "browser/extension-create.ts",
+    "browser/layout-tail.ts"
   ]
 }
