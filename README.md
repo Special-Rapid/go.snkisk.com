@@ -162,3 +162,7 @@ npm test
 ## テーマ処理の型付き正本
 
 [Issue #59](https://github.com/Special-Rapid/go.snkisk.com/issues/59)の共有layoutのテーマ処理は `browser/theme-controls.ts` を編集し、固定生成 `src/theme-controls-script.ts` を従来の位置へ埋め込みます。生成対象は24件です。System/Light/Dark、OS変更追従、手動保存、言語別ラベル、menu閉じとsummary focus、legacy listener、datasetの読み取り回数と既存例外を維持します。画面上のテーマ選択は既存radioへ渡されます。消去される型generic/non-null構文は新しい実行時検証ではありません。手書き残4箇所、実ブラウザー確認、本番反映は別作業です。
+
+## 言語・テーマ選択ボタンの型付き正本
+
+[Issue #61](https://github.com/Special-Rapid/go.snkisk.com/issues/61)の共有layoutの選択ボタン処理は `browser/locale-picker.ts` を編集し、固定生成 `src/locale-picker-script.ts` を従来のHTML/CSS・挿入順で埋め込みます。生成対象は25件です。click・方向キー/Home/End・RAF focus、テーマradio接続、言語callback/select fallback、OS追従・observer・meta同期、保存値、再取得・未知key/prototype値・既存例外を維持します。消去されるnon-null1とcallback引数型は新しい実行時検証ではありません。手書き残3箇所、実ブラウザー確認、本番反映は別作業です。
