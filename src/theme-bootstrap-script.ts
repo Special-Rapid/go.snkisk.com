@@ -1,0 +1,2 @@
+// tools/build-locked-page.mtsの生成物。編集元はbrowser/theme-bootstrap.tsです。
+export const themeBootstrapCode = "(() => {\n    const key = \"go_theme\";\n    let theme = \"auto\";\n    try {\n        const saved = localStorage.getItem(key);\n        if (saved === \"light\" || saved === \"dark\" || saved === \"auto\")\n            theme = saved;\n    }\n    catch { }\n    document.documentElement.dataset.theme = theme;\n    document.documentElement.style.colorScheme = theme === \"auto\" ? \"light dark\" : theme;\n})();\n";
