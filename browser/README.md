@@ -85,3 +85,7 @@
 ### 作成フォームの状態管理
 
 [Issue #41](https://github.com/Special-Rapid/go.snkisk.com/issues/41)の `browser/create-state.ts` をstrict正本とし、固定15生成の `src/create-state-script.ts` を同位置へ埋め込みます。初回setTimeout(0)、studio/form型guard、現在言語でのURL検証表示、Turnstile success/expired/errorの状態同期、input/changeの遅延同期、audience有効時のlabel/slug customValidityを維持します。共有Windowのoptional callback3宣言とnameのstring注釈だけを追加し、型の強制変換は使いません。旧14生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は13箇所です。
+
+### 条件フォームの同期
+
+[Issue #43](https://github.com/Special-Rapid/go.snkisk.com/issues/43)の `browser/condition-form-sync.ts` をstrict正本とし、固定16生成の `src/condition-form-sync-script.ts` を同位置へ埋め込みます。無効条件の既存日本語表示、切替設定によるSNSプレビューfieldsetとnotice、input/change/conditioncardsyncの即時同期、microtask後のsubmit登録と無効日時inputと同名hiddenの除去を維持します。string注釈4と現HTMLの日時inputに型引数1だけを追加し、型の強制変換は使いません。旧15生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は12箇所です。
