@@ -52,3 +52,10 @@
 [Issue #27](https://github.com/Special-Rapid/go.snkisk.com/issues/27)の `create-form-dynamic-locale.ts` は初回実行時がenなら5文言の翻訳を開始し、その後は言語を再判定しません。初回RAFは全text Nodeを収集してから変換し、characterDataと追加textはそのNodeだけを直接変換します。追加Elementは配下を走査します。前の用語翻訳で行う「追加textの親を再走査」とは別の既存契約です。除外tag・空白・childList/subtree/characterData監視と挿入順を維持します。
 
 辞書の欠落値、変換/走査引数とNode配列の4型注釈でstrict検査し、型の強制変換は使いません。現在の固定生成は8正本、追加生成先は `src/create-form-dynamic-locale-script.ts`、従来7生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き20箇所です。
+
+
+### ホーム補助翻訳のstrict TypeScript正本
+
+[Issue #29](https://github.com/Special-Rapid/go.snkisk.com/issues/29)の `home-polish-locale.ts` は初回enで補助3文言の翻訳を開始し、後続は言語を再判定しません。親または祖先の `[data-no-i18n]` を除外し、除外tagと空白を保ちます。RAFは実行時点のbodyから全text Nodeを収集後に変換します。characterDataと追加textは対象だけを直接変換し、追加Elementは配下を走査します。
+
+辞書欠落値・変換/走査引数・Node配列の4型注釈だけを使い、型の強制変換はありません。固定生成は9正本、追加先は `src/home-polish-locale-script.ts`、従来8生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は19箇所です。
