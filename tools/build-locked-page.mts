@@ -35,6 +35,7 @@ const entries = [
   { source: "condition-form-sync", target: "condition-form-sync-script", symbol: "conditionFormSyncCode" },
   { source: "setting-info", target: "setting-info-script", symbol: "settingInfoCode" },
   { source: "localization-after", target: "localization-after-script", symbol: "localizationAfterCode" },
+  { source: "docs-query", target: "docs-query-script", symbol: "docsQueryCode" },
 ];
 if (parsed.fileNames.length !== entries.length || parsed.fileNames.some((name, index) => resolve(name) !== join(root, `browser/${entries[index].source}.ts`))) {
   throw new Error("登録されたブラウザー用の指定sourceだけを生成できます。");
@@ -66,7 +67,7 @@ try {
       await writeFile(output.target, output.generated);
     }
   }
-  console.log(args[0] === "--check" ? "埋込script生成18件の一致PASS" : "埋込script18件を生成しました。");
+  console.log(args[0] === "--check" ? "埋込script生成19件の一致PASS" : "埋込script19件を生成しました。");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
