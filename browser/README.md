@@ -113,3 +113,7 @@
 ## クエリー初期値処理の型付き正本
 
 [Issue #55](https://github.com/Special-Rapid/go.snkisk.com/issues/55)の作成フォームのクエリー初期値処理は `browser/create-query-preset.ts` を編集し、固定生成の `src/create-query-preset-script.ts` を同じ場所へ埋め込みます。生成対象は22件です。許可パラメーター・値の検証、条件切替、通知順、`restore=1` の除外を維持します。手書きJSの残作業6箇所と、本番反映・実ブラウザー確認は別の作業です。
+
+## 条件概要の英語同期の型付き正本
+
+[Issue #57](https://github.com/Special-Rapid/go.snkisk.com/issues/57)の条件概要の英語同期は `browser/create-rule-locale.ts` を編集し、固定生成 `src/create-rule-locale-script.ts` を従来の位置へ埋め込みます。生成対象は23件です。timer実行時のen判定、期限・回数・切替の文言、input/change後の再同期、DOMの読み取り回数と既存例外を維持します。繰り返し取得の型構文は実行時に消去され、新しい入力検証ではありません。手書き残5箇所と実ブラウザー確認・本番反映は別作業です。
