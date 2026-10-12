@@ -24,6 +24,7 @@ const entries = [
   { source: "theme-bootstrap", target: "theme-bootstrap-script", symbol: "themeBootstrapCode" },
   { source: "create-form-terms-locale", target: "create-form-terms-locale-script", symbol: "createFormTermsLocaleCode" },
   { source: "setting-info-locale-refresh", target: "setting-info-locale-refresh-script", symbol: "settingInfoLocaleRefreshCode" },
+  { source: "create-form-dynamic-locale", target: "create-form-dynamic-locale-script", symbol: "createFormDynamicLocaleCode" },
 ];
 if (parsed.fileNames.length !== entries.length || parsed.fileNames.some((name, index) => resolve(name) !== join(root, `browser/${entries[index].source}.ts`))) {
   throw new Error("登録されたブラウザー用の指定sourceだけを生成できます。");
@@ -55,7 +56,7 @@ try {
       await writeFile(output.target, output.generated);
     }
   }
-  console.log(args[0] === "--check" ? "埋込script生成7件の一致PASS" : "埋込script7件を生成しました。");
+  console.log(args[0] === "--check" ? "埋込script生成8件の一致PASS" : "埋込script8件を生成しました。");
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
