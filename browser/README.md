@@ -69,3 +69,7 @@
 ### 完了・管理文言の補助翻訳
 
 `browser/completion-locale.ts` をstrict正本とし、固定11生成の `src/completion-locale-script.ts` を共通ページへ埋め込みます。初回enだけで開始し、後続の言語変更は再判定しません。textの親・祖先 `data-no-i18n` と除外tag、空白保持、RAF時点body、全text収集後変換、characterData/追加textの直接変換と追加Element走査を維持します。辞書12文言のうち `期限: ` は末尾空白を含むkeyであり、trim後のlookupでは一致しない既存挙動を保持します。4型注釈だけを追加し、旧10生成物のbyteと監視3項目・挿入順を保ちます。
+
+### 作成フォーム45文言の翻訳
+
+`browser/create-form-locale.ts` をstrict正本とし、固定12生成の `src/create-form-locale-script.ts` を埋め込みます。初回enだけ開始し、各convertでもlangを再判定します。en開始後の非en中は変換せず、enへ戻った通知では変換します。SCRIPT/STYLE/TEXTAREAの3tagを除外し、OPTIONは変換します。data-no-i18n祖先除外を追加しない既存契約です。空白保持、RAF時点body、全Text収集後変換、characterData/追加Text直接変換と追加Element走査、監視3項目と挿入順を維持します。4型注釈だけを追加し、旧11生成物のbyteを保持します。
