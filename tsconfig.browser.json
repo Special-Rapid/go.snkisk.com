@@ -23,6 +23,7 @@
     "browser/create-form-terms-locale.ts",
     "browser/setting-info-locale-refresh.ts",
     "browser/create-form-dynamic-locale.ts",
-    "browser/home-polish-locale.ts"
+    "browser/home-polish-locale.ts",
+    "browser/entry-expiry-locale.ts"
   ]
 }
