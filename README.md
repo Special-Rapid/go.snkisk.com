@@ -118,3 +118,7 @@ npm test
 ### 入力検証翻訳と日時整形
 
 [Issue #37](https://github.com/Special-Rapid/go.snkisk.com/issues/37)の `browser/validation-locale.ts` をstrict正本とし、固定13生成の `src/validation-locale-script.ts` を同位置へ埋め込みます。22固定文言と4正規表現、捕捉値・空白・親/祖先data-no-i18n・除外4tagを保持します。初回enだけ開始し、後続の言語は再判定しません。RAF時点bodyの全Text収集後変換に続いて日時を整形し、characterData/追加Text直接変換と追加Element走査では日時を整形しません。DateのNaN判定とIntlのzone/shortOffset/dateStyle/timeStyle、監視3項目と順序を維持します。辞書欠落値・string引数・Node/Node配列と、既存HTML time要素向けquerySelectorAllのHTMLElement型引数だけを追加します。型の強制変換はなく、旧12生成物のbyteを保ちます。前段の件数は履歴で、親 #7の手書き残作業は15箇所です。
+
+### 条件カードの制御
+
+[Issue #39](https://github.com/Special-Rapid/go.snkisk.com/issues/39)の `browser/condition-card.ts` をstrict正本とし、固定14生成の `src/condition-card-script.ts` を同位置へ埋め込みます。toggleによる表示・control disabled・上限転送設定・form同期event、hashのdecode/所属確認/details展開/RAFscroll、submit時の期間customValidity・required・checkValidity/reportValidityを維持します。期間input/changeはcustomValidityを解除します。control列挙のinput/select/textarea unionと期間2IDのinputに型引数2箇所だけを付け、型の強制変換は使いません。旧13生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は14箇所です。
