@@ -19,6 +19,7 @@
     "browser/create-preview-label.ts",
     "browser/create-service-guide-locale.ts",
     "browser/create-rule-heading-locale.ts",
-    "browser/theme-bootstrap.ts"
+    "browser/theme-bootstrap.ts",
+    "browser/create-form-terms-locale.ts"
   ]
 }
