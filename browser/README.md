@@ -101,3 +101,7 @@
 ### クエリー設定案内の補助翻訳
 
 [Issue #49](https://github.com/Special-Rapid/go.snkisk.com/issues/49)の `browser/docs-query.ts` をstrict正本とし、固定19生成の `src/docs-query-script.ts` を同位置へ埋め込みます。ja/enの辞書と未知keyのundefined、現在のlangによる文言とtitle、locale通知、DOMContentLoaded onceの順序を保ちます。現HTMLの `data-docs-copy` は8要素で、辞書の15項目すべてがDOMにあるとは扱いません。既存 `escapeHtml(docsOrigin)` は一意markerをcallbackで置換し、replacement特殊文字をそのまま保ちます。旧18生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は9箇所です。
+
+### 未使用の補助翻訳定義
+
+[Issue #51](https://github.com/Special-Rapid/go.snkisk.com/issues/51)の `browser/localization-polish.ts` をstrict正本とし、固定20生成の `src/localization-polish-script.ts` から既存定義を復元します。現在の `localizationPolishScript` は定義のみでHTMLへ挿入されていません。呼出し・埋込の追加や定義の削除は行わず、初期en判定、19文言、空白、除外tag、zone/title、optional翻訳callback、MutationObserver処理と例外を保持します。固定 `SERVICE_HOST` の補間は一意markerで復元し、旧19生成byteと完成Worker HTML全文を維持します。前段件数は履歴です。親 #7の手書き残作業は8箇所です。

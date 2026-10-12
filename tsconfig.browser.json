@@ -33,6 +33,7 @@
     "browser/condition-form-sync.ts",
     "browser/setting-info.ts",
     "browser/localization-after.ts",
-    "browser/docs-query.ts"
+    "browser/docs-query.ts",
+    "browser/localization-polish.ts"
   ]
 }
