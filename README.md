@@ -66,3 +66,7 @@ npm test
 ### 作成画面の案内翻訳の型移行
 
 [Issue #17](https://github.com/Special-Rapid/go.snkisk.com/issues/17)では案内翻訳の1単位を [ブラウザー用の正本](browser/README.md)へ移しました。現在の既存生成コマンドは固定3件を対象にし、導入済み2生成物のbyteと互換性を維持します。日本語/英語の案内文言、言語変更とDOMContentLoadedのイベント、公開docsへのリンクは同じです。残25inlineは親Issue #7の後続作業です。
+
+### 条件見出しの翻訳の型移行
+
+[Issue #19](https://github.com/Special-Rapid/go.snkisk.com/issues/19)では条件見出しの翻訳を [ブラウザー用の正本](browser/README.md)へ移しました。現在の固定生成は4件です。辞書・遅延実行・入力イベント・回数表示を維持し、親Issue #7には24箇所の手書き埋込JSが残ります。
