@@ -40,3 +40,9 @@
 [Issue #23](https://github.com/Special-Rapid/go.snkisk.com/issues/23)の `create-form-terms-locale.ts` は、初回実行時の文書言語が `en` の場合だけ開始し、その後は言語を再判定せずに有効期限・終了時表示・終了メッセージ・現地時間の4文言を翻訳します。初回RAF、追加NodeのMutationObserver、text walker、除外tagと前後の空白、同期走査の順序を維持します。追加textでは親を走査し、追加Elementではその要素を走査する既存の区別を保ちます。言語の決定・保存・切替はこの処理に移していません。
 
 辞書の欠落値は `string | undefined`、走査引数と配列はNode型としてstrict検査します。型の強制変換は使いません。現在の固定生成は6正本で、追加生成先は `src/create-form-terms-locale-script.ts`、従来5生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き22箇所です。
+
+## 作成画面の説明再同期
+
+[Issue #25](https://github.com/Special-Rapid/go.snkisk.com/issues/25)の `setting-info-locale-refresh.ts` は、DOMContentLoadedを一度だけ登録し、発火時に既存条件toggleのinputへchangeをbubbles=trueで送ります。その後で文書言語を判定し、enかつ既存studioがHTMLElementの場合だけ5文言を翻訳します。イベントによる言語/DOM変更を反映する順序、例外時の後続停止、除外tag・空白・replaceによる置換を保ちます。言語や設定の保存・切替処理は変更しません。
+
+辞書の欠落値は `string | undefined`、走査配列はNode型でstrict検査し、型の強制変換は使いません。現在の固定生成は7正本、追加生成先は `src/setting-info-locale-refresh-script.ts`、従来6生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き21箇所です。
