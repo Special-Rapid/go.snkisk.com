@@ -93,3 +93,7 @@
 ### 設定説明とinfo開閉
 
 [Issue #45](https://github.com/Special-Rapid/go.snkisk.com/issues/45)の `browser/setting-info.ts` をstrict正本とし、固定17生成の `src/setting-info-script.ts` を同位置へ埋め込みます。現在言語での見出し・状態・説明、infoのclick/focus/blur/hover、focus中leaveの維持、hashと入力エラーによるdetails展開、load/localechange/toggle同期の順序を保ちます。辞書の型とbutton/tooltip/valueの4注釈だけを追加し、未知keyのundefinedと旧16生成byteを保持します。前段件数は履歴で、親 #7の手書き残作業は11箇所です。
+
+### 言語切替後の補助翻訳
+
+[Issue #47](https://github.com/Special-Rapid/go.snkisk.com/issues/47)の `browser/localization-after.ts` をstrict正本とし、固定18生成の `src/localization-after-script.ts` を同位置へ埋め込みます。既存の文字列辞書登録・文字列翻訳callback2つをoptionalとして表し、不在時のfallback、19文言の辞書登録、RAF走査と除外tag、日時zone、title suffix、input/change後のtimer、locale通知の順序を保ちます。生成scriptの一意markerを現在の固定 `SERVICE_HOST` で置換し、外部入力の新経路は作りません。旧17生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は10箇所です。
