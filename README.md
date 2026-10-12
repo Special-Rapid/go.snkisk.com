@@ -122,3 +122,7 @@ npm test
 ### 条件カードの制御
 
 [Issue #39](https://github.com/Special-Rapid/go.snkisk.com/issues/39)の `browser/condition-card.ts` をstrict正本とし、固定14生成の `src/condition-card-script.ts` を同位置へ埋め込みます。toggleによる表示・control disabled・上限転送設定・form同期event、hashのdecode/所属確認/details展開/RAFscroll、submit時の期間customValidity・required・checkValidity/reportValidityを維持します。期間input/changeはcustomValidityを解除します。control列挙のinput/select/textarea unionと期間2IDのinputに型引数2箇所だけを付け、型の強制変換は使いません。旧13生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は14箇所です。
+
+### 作成フォームの状態管理
+
+[Issue #41](https://github.com/Special-Rapid/go.snkisk.com/issues/41)の `browser/create-state.ts` をstrict正本とし、固定15生成の `src/create-state-script.ts` を同位置へ埋め込みます。初回setTimeout(0)、studio/form型guard、現在言語でのURL検証表示、Turnstile success/expired/errorの状態同期、input/changeの遅延同期、audience有効時のlabel/slug customValidityを維持します。共有Windowのoptional callback3宣言とnameのstring注釈だけを追加し、型の強制変換は使いません。旧14生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は13箇所です。
