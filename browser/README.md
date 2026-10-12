@@ -109,3 +109,7 @@
 ### 共有翻訳処理
 
 [Issue #53](https://github.com/Special-Rapid/go.snkisk.com/issues/53)の `browser/localization-core.ts` をstrict正本とし、固定21生成の `src/localization-core-script.ts` を既存の共有layoutへ同じ位置で埋め込みます。保存済みja/enをOSより優先し、それ以外は既存のOS判定（ja候補があればja、それ以外en）を保持します。manual選択の保存、auto時の削除、text・placeholder・altの辞書、observerの停止と再接続、locale通知の順序を変えません。型注釈だけで既存のprototype key例外やzone文言も保持し、今回に挙動改善を混ぜません。旧20生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は7箇所です。
+
+## クエリー初期値処理の型付き正本
+
+[Issue #55](https://github.com/Special-Rapid/go.snkisk.com/issues/55)の作成フォームのクエリー初期値処理は `browser/create-query-preset.ts` を編集し、固定生成の `src/create-query-preset-script.ts` を同じ場所へ埋め込みます。生成対象は22件です。許可パラメーター・値の検証、条件切替、通知順、`restore=1` の除外を維持します。手書きJSの残作業6箇所と、本番反映・実ブラウザー確認は別の作業です。

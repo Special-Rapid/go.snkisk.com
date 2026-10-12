@@ -35,6 +35,7 @@
     "browser/localization-after.ts",
     "browser/docs-query.ts",
     "browser/localization-polish.ts",
-    "browser/localization-core.ts"
+    "browser/localization-core.ts",
+    "browser/create-query-preset.ts"
   ]
 }
