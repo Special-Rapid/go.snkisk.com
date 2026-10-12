@@ -37,6 +37,7 @@
     "browser/localization-polish.ts",
     "browser/localization-core.ts",
     "browser/create-query-preset.ts",
-    "browser/create-rule-locale.ts"
+    "browser/create-rule-locale.ts",
+    "browser/theme-controls.ts"
   ]
 }
