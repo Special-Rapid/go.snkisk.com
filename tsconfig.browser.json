@@ -40,6 +40,7 @@
     "browser/create-rule-locale.ts",
     "browser/theme-controls.ts",
     "browser/locale-picker.ts",
-    "browser/create-form-recovery.ts"
+    "browser/create-form-recovery.ts",
+    "browser/extension-create.ts"
   ]
 }

@@ -170,3 +170,7 @@ npm test
 ## フォーム復元処理の型付き正本
 
 [Issue #63](https://github.com/Special-Rapid/go.snkisk.com/issues/63)の作成フォーム保存・復元は `browser/create-form-recovery.ts` を編集し、固定生成 `src/create-form-recovery-script.ts` を従来の位置へ埋め込みます。生成対象は26件です。submit listenerとrestoreの順序、sessionStorageの保存除外・既存復元・例外、各controlとtoggle、formイベントとerror focus呼出しを維持します。JSON.parse由来の型注釈は未検証のproducer契約で、新しい実行時検証ではありません。異常値・継承key・繰り返し取得・途中例外の挙動も保ちます。手書き残2箇所、実ブラウザー確認、本番反映は別作業です。
+
+## 拡張機能との通信処理の型付き正本
+
+[Issue #65](https://github.com/Special-Rapid/go.snkisk.com/issues/65)のbridgeは `browser/extension-create.ts` を編集し、固定生成 `src/extension-create-script.ts` を既存位置へ埋め込みます。生成対象は27件です。既存のtrusted origin定数だけをJSON文字列へ置換し、origin・親window・popup sourceの照合、targetUrlの二回取得、ready/error/token通知とTurnstile callbackの順序を維持します。MessageEventのdata型は未検証のproducer契約で、実行時validatorを追加しません。異常値・繰り返しgetter・部分例外と空string tokenの既存条件も保ちます。手書き残1単位、実Chrome/Turnstile確認、本番反映は別作業です。
