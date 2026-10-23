@@ -1,41 +1,61 @@
+[日本語](README-ja.md)
+
 # sinkaisoku.com / go.snkisk.com
 
-`sinkaisoku.com`と`go.snkisk.com`で同じ短縮パスを扱う、条件付き短縮 URL サービスのソースコードです。
+Source code for a conditional URL shortener serving the same short paths on `sinkaisoku.com` and `go.snkisk.com`.
 
-## できること
+## Current structure and migration history
 
-- 任意の短縮パス、または自動生成された短縮 URL を作成
-- 作成済みリンクの転送先・短縮パス・公開条件を管理
-- 公開開始日時、有効期限、利用回数上限、日時による転送先切替、合言葉保護を設定
-- 上限・期限到達時の表示や、別 URL への転送を設定
-- 相手や用途ごとに期限・表示・SNS プレビューを持つ入口 URL を作成
-- SNS/チャット向けの OG プレビューと公開 URL 専用の QR コードを表示
-- 日本語・英語、ライト・ダークテーマに対応
+The browser TypeScript migration is complete, with 28 fixed generation targets. Counts of generated targets and remaining handwritten JavaScript, Draft status, pending integration, and pending production delivery in the stage descriptions below refer to the time of introduction, rather than the current work status. See [browser/README.md](browser/README.md) for current editable sources and generation contracts, and [extension/README.md](extension/README.md) for the Chrome extension.
 
-## 動作の考え方
+## Local development and verification
 
-リンクを開いたときは、有効期限、利用開始・合言葉、利用回数、日時による切替をこの順で確認します。設定されていない条件は判定せず、通常時は登録した転送先 URL へ移動します。
+Use Node.js 22.18 or later. Install dependencies and verify with:
 
-アクセス履歴・IP アドレス・User-Agent は保存しません。利用回数上限を設定したリンクだけ、上限判定のための累計利用回数を保持します。
+```sh
+npm ci
+npm run typecheck
+npm run check:extension
+npm run check:locked-page
+npm test
+```
 
-## 公開について
+Start the local development server with `npm run dev`. Actual creation and management operations require bindings such as D1 and the Secret/Access configuration below. Image responses in tests are mocked, but Miniflare startup may fetch Cloudflare's `cf.json`, so the entire test suite is not necessarily offline.
 
-このリポジトリは `sinkaisoku.com` と `go.snkisk.com` の実装を公開するためのものです。実運用の秘密情報は含みません。特に `TURNSTILE_SECRET` は Worker の外部 Secret として管理し、リポジトリへ追加しません。
+## Features
 
-クエリーで作成フォームを初期設定する方法は、`https://docs.sinkaisoku.com/query`（または`https://docs.go.snkisk.com/query`）で案内します。両docsホストはWorkerへ割り当て済みで、Turnstileは2つの公開ホストを許可しています。
+- Create short URLs with a chosen or automatically generated short path.
+- Manage destinations, paths, and publication conditions of existing links.
+- Set publication start times, expiry, usage limits, scheduled destination switching, and passphrase protection.
+- Choose a display or redirect URL when a limit or expiry is reached.
+- Create entry URLs with separate expiry, display, and social previews for different recipients or purposes.
+- Display social/chat OG previews and QR codes for public URLs only.
+- Support Japanese/English and light/dark themes.
 
-## 管理ダッシュボード
+## Behavior
 
-`/admin/` と `/api/admin/*` は、両方の宛先を含む Cloudflare Access アプリケーションで保護します。Worker でも Access の `Cf-Access-Jwt-Assertion` を署名・issuer・AUD まで検証するため、デプロイ前に次の Worker Secret を設定してください。
+Opening a link checks expiry, publication start/passphrase, usage count, and scheduled destination switching, in that order. Unset conditions are skipped; normal operation redirects to the registered destination URL.
+
+Access history, IP addresses, and User-Agent values are not stored. Only links with usage limits retain aggregate usage counts to enforce those limits.
+
+## Publication
+
+This repository publishes the implementation of `sinkaisoku.com` and `go.snkisk.com`. It contains no operational secrets. In particular, manage `TURNSTILE_SECRET` as an external Worker Secret and never add it to the repository.
+
+Instructions for initializing the creation form with query parameters are at `https://docs.sinkaisoku.com/query` (or `https://docs.go.snkisk.com/query`). Both documentation hosts are assigned to the Worker; Turnstile allows the two public service hosts.
+
+## Admin dashboard
+
+Protect both `/admin/` and `/api/admin/*` with Cloudflare Access applications covering both destinations. The Worker also verifies the signature, issuer, and AUD of `Cf-Access-Jwt-Assertion`. Configure these Worker Secrets before deployment:
 
 - `ACCESS_TEAM_DOMAIN`: `<team>.cloudflareaccess.com`
-- `ACCESS_ADMIN_AUDS`: `/admin/*` と `/api/admin/*` を保護する Access アプリケーションの AUDをカンマ区切りで指定
+- `ACCESS_ADMIN_AUDS`: comma-separated AUD values for the Access applications protecting `/admin/*` and `/api/admin/*`.
 
-管理者の強制操作は `admin_audit_events` に90日間記録し、日次Cronで期限切れの記録を削除します。リンクの削除は論理削除で、短縮パスは再利用できません。アクセス履歴・IPアドレス・User-Agentは保存しません。
+Administrative forced operations are recorded in `admin_audit_events` for 90 days; a daily Cron deletes expired records. Link deletion is logical deletion, and deleted short paths cannot be reused. Access history, IP addresses, and User-Agent values are not stored.
 
-## 静的プレビュー画像
+## Static preview image
 
-`GET /assets/share-preview-amber-waves.jpg` は元の800×400 JPEGを公開CDNから取得する互換経路です。`src/static-media.ts` にURL・SHA256・49793 bytes・MIMEを固定し、status/MIME/サイズ/署名/hashを確認した画像だけを従来の200とcache headerで返します。CDN取得失敗・不一致は502/no-storeで返します。queryや利用者の認証headerはCDNへ渡しません。画像本体やbase64はGitへ保存せず、変更時はownerのCDN原本確認後にmappingとテストを更新します。
+`GET /assets/share-preview-amber-waves.jpg` is a compatibility route retrieving the original 800×400 JPEG from the public CDN. `src/static-media.ts` pins the URL, SHA256, 49793 bytes, and MIME type. Only images passing status, MIME, size, signature, and hash checks return the existing 200 status and cache headers. CDN failures or mismatches return 502/no-store. Query parameters and user authentication headers are not forwarded to the CDN. The image body and base64 are not stored in Git. To change it, update the mapping and tests after the owner confirms the CDN original.
 
 ```sh
 npm ci
@@ -43,138 +63,137 @@ npm run typecheck
 npm test
 ```
 
-テストはCDNアクセスをmockし、原本を再uploadしません。
+Tests mock CDN access and do not reupload the original image.
 
-テストの手書きsourceは `test/*.test.mts` です。Node.js 22.18以降のTypeScript直接実行を使い、`npm run typecheck` はWorker・テスト・拡張機能・生成ツールを厳格に型検査します。テストのJavaScript生成物は保存しません。Chrome拡張機能の編集元と生成手順は [extension/README.md](extension/README.md) を参照してください。
+Handwritten tests are `test/*.test.mts`, executed directly as TypeScript with Node.js 22.18 or later. `npm run typecheck` strictly checks the Worker, tests, extension, and generation tools. Generated JavaScript test files are not stored. See [extension/README.md](extension/README.md) for Chrome extension sources and generation steps.
 
+## Checking private work records
 
-## 非公開作業記録の確認
+Work records, state matrices, and verification evidence remain in private local `docs/`; they are not staged, committed, pushed, or publicly served. In a dedicated worktree, update and read back the primary checkout's existing feature/task records. Public PRs include only results suitable for publication; reviews use actual readings of the private records. The records themselves are not added to the public diff.
 
-作業記録・状態表・検証証跡は非公開のローカル `docs/` に保存し、stage・commit・push・公開配信しません。専用worktreeではprimary checkoutの既存feature/task記録を更新して読み戻します。公開PRには確認結果だけを公開可能な範囲で記載し、レビューには非公開記録の実読結果を使います。記録本体は公開差分へ追加しません。
+## Browser handling before publication
 
+[browser/README.md](browser/README.md) documents the editable source and generation contract for automatic navigation after the publication time. `npm run typecheck` also strictly checks this browser behavior. `npm run build:locked-page` generates the string embedded in the Worker; `npm run check:locked-page` checks it for a match. These inputs and outputs are separate from Chrome extension generation. This stage preserved the pre-publication page's appearance/interactions, leaving other inline JavaScript for later stages of parent Issue #7.
 
-## 公開前リンクのブラウザー処理
+### Creation preview label migration
 
-公開時刻後の自動遷移は [browser/README.md](browser/README.md) に編集元と生成契約を記載しています。`npm run typecheck` はこの1つのブラウザー処理もstrict検査し、`npm run build:locked-page` でWorkerへ埋め込むstringを生成、`npm run check:locked-page` で一致を確認します。Chrome拡張の生成とは別の入力・生成先です。公開前リンク画面の表示と操作を維持し、他のインラインJSは親Issue #7の後続移行に残します。
+[Issue #15](https://github.com/Special-Rapid/go.snkisk.com/issues/15) moved preview label embedded JavaScript to the [browser sources](browser/README.md). It retained `npm run build:locked-page` / `npm run check:locked-page`, generating/checking two fixed targets together with pre-publication behavior. Existing label text, events, and HTML insertion positions were preserved; other embedded JavaScript and public documentation were unchanged.
 
+### Creation guidance translation migration
 
-### 作成画面のプレビューラベルの型移行
+[Issue #17](https://github.com/Special-Rapid/go.snkisk.com/issues/17) moved one guidance translation unit to the [browser sources](browser/README.md). The existing commands then covered three fixed targets, preserving bytes and compatibility of the two previous outputs. Japanese/English guidance, language-change/DOMContentLoaded events, and public documentation links were unchanged. The remaining 25 inline units were later work under parent Issue #7.
 
-[Issue #15](https://github.com/Special-Rapid/go.snkisk.com/issues/15)ではプレビューラベルの埋込JSを [ブラウザー用の正本](browser/README.md)へ移しました。従来の `npm run build:locked-page` / `npm run check:locked-page` を維持し、公開前リンクと合わせた固定2件の生成・一致検査を行います。既存のラベル文言・イベント・HTML挿入位置を保ち、他の埋込JSと公開docsは変更しません。
+### Condition heading translation migration
 
+[Issue #19](https://github.com/Special-Rapid/go.snkisk.com/issues/19) moved condition heading translation to the [browser sources](browser/README.md). Generation then covered four fixed targets. Dictionaries, deferred execution, input events, and count displays were preserved. Parent Issue #7 then had 24 handwritten embedded JavaScript locations remaining.
 
-### 作成画面の案内翻訳の型移行
+## Theme initialization TypeScript source
 
-[Issue #17](https://github.com/Special-Rapid/go.snkisk.com/issues/17)では案内翻訳の1単位を [ブラウザー用の正本](browser/README.md)へ移しました。現在の既存生成コマンドは固定3件を対象にし、導入済み2生成物のbyteと互換性を維持します。日本語/英語の案内文言、言語変更とDOMContentLoadedのイベント、公開docsへのリンクは同じです。残25inlineは親Issue #7の後続作業です。
+[Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21) moved theme initialization to the sources in [browser/README.md](browser/README.md). Generation then covered five fixed targets; earlier counts are introduction history. Synchronous saved-value reads, the `auto` fallback for invalid values/exceptions, and execution order within the head were preserved. Parent Issue #7 then had 23 handwritten embedded JavaScript locations remaining.
 
-### 条件見出しの翻訳の型移行
+## Creation form terminology translation
 
-[Issue #19](https://github.com/Special-Rapid/go.snkisk.com/issues/19)では条件見出しの翻訳を [ブラウザー用の正本](browser/README.md)へ移しました。現在の固定生成は4件です。辞書・遅延実行・入力イベント・回数表示を維持し、親Issue #7には24箇所の手書き埋込JSが残ります。
+The `create-form-terms-locale.ts` source from [Issue #23](https://github.com/Special-Rapid/go.snkisk.com/issues/23) starts only for an initial document language of `en`, then translates four expiry/end-display/end-message/local-time labels without checking the language again. It preserves initial RAF, added-Node MutationObserver, text walker, excluded tags, surrounding whitespace, and synchronous traversal order. Added text traverses its parent; an added Element traverses that Element. Language selection/persistence/switching were not moved here.
 
+Missing dictionary values use `string | undefined`; traversal arguments/arrays use Node types under strict checking, without type assertions. Generation then covered six sources, adding `src/create-form-terms-locale-script.ts`; the five previous outputs remained byte-identical. Earlier counts are introduction history. Parent Issue #7 then had 22 handwritten locations remaining.
 
-## テーマ初期化のTypeScript正本
+## Creation guidance resynchronization
 
-[Issue #21](https://github.com/Special-Rapid/go.snkisk.com/issues/21)のテーマ初期化を [browser/README.md](browser/README.md) の正本へ移しています。現在の固定生成は5件で、前段の件数は導入履歴です。保存値の同期読取、無効値・例外時のauto、head内の実行順を維持します。親Issue #7には23箇所の手書き埋込JSが残ります。
+The `setting-info-locale-refresh.ts` source from [Issue #25](https://github.com/Special-Rapid/go.snkisk.com/issues/25) registers DOMContentLoaded once, then dispatches change with bubbles=true to existing condition toggle inputs when it fires. It next checks document language and translates five labels only for `en` with an existing HTMLElement studio. It preserves the order reflecting event-driven language/DOM changes, stopping later processing on exceptions, excluded tags, whitespace, and replacement via replace. Language/settings persistence and switching are unchanged.
 
-## 作成画面の用語翻訳
+Missing dictionary values use `string | undefined`; traversal arrays use Node types under strict checking, without type assertions. Generation then covered seven sources, adding `src/setting-info-locale-refresh-script.ts`; the six previous outputs remained byte-identical. Earlier counts are introduction history. Parent Issue #7 then had 21 handwritten locations remaining.
 
-[Issue #23](https://github.com/Special-Rapid/go.snkisk.com/issues/23)の `create-form-terms-locale.ts` は、初回実行時の文書言語が `en` の場合だけ開始し、その後は言語を再判定せずに有効期限・終了時表示・終了メッセージ・現地時間の4文言を翻訳します。初回RAF、追加NodeのMutationObserver、text walker、除外tagと前後の空白、同期走査の順序を維持します。追加textでは親を走査し、追加Elementではその要素を走査する既存の区別を保ちます。言語の決定・保存・切替はこの処理に移していません。
+## Dynamic creation text translation
 
-辞書の欠落値は `string | undefined`、走査引数と配列はNode型としてstrict検査します。型の強制変換は使いません。現在の固定生成は6正本で、追加生成先は `src/create-form-terms-locale-script.ts`、従来5生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き22箇所です。
+The `create-form-dynamic-locale.ts` source from [Issue #27](https://github.com/Special-Rapid/go.snkisk.com/issues/27) starts translating five labels for initial `en`, without rechecking language. Initial RAF collects all text Nodes before conversion. characterData/added text convert only that Node directly; added Elements are traversed. This differs from the previous terminology translation's traversal of an added text Node's parent. Excluded tags, whitespace, childList/subtree/characterData observation, and insertion order are preserved.
 
-## 作成画面の説明再同期
+Four annotations cover missing dictionary values, conversion/traversal arguments, and Node arrays under strict checking, without type assertions. Generation then covered eight sources, adding `src/create-form-dynamic-locale-script.ts`; the seven previous outputs remained byte-identical. Earlier counts are introduction history. Parent Issue #7 then had 20 handwritten locations remaining.
 
-[Issue #25](https://github.com/Special-Rapid/go.snkisk.com/issues/25)の `setting-info-locale-refresh.ts` は、DOMContentLoadedを一度だけ登録し、発火時に既存条件toggleのinputへchangeをbubbles=trueで送ります。その後で文書言語を判定し、enかつ既存studioがHTMLElementの場合だけ5文言を翻訳します。イベントによる言語/DOM変更を反映する順序、例外時の後続停止、除外tag・空白・replaceによる置換を保ちます。言語や設定の保存・切替処理は変更しません。
+### Home supplementary translation source
 
-辞書の欠落値は `string | undefined`、走査配列はNode型でstrict検査し、型の強制変換は使いません。現在の固定生成は7正本、追加生成先は `src/setting-info-locale-refresh-script.ts`、従来6生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き21箇所です。
+The `home-polish-locale.ts` source from [Issue #29](https://github.com/Special-Rapid/go.snkisk.com/issues/29) starts translating three supplementary labels for initial `en`, without rechecking language. It excludes parent/ancestor `[data-no-i18n]`, preserving excluded tags and whitespace. RAF collects all text Nodes from the body at execution time before conversion. characterData/added text convert only the target directly; added Elements are traversed.
 
-## 作成画面の動的文言翻訳
+Only four annotations for missing dictionary values, conversion/traversal arguments, and Node arrays are used, without type assertions. Generation then covered nine sources, adding `src/home-polish-locale-script.ts`; the eight previous outputs remained byte-identical. Earlier counts are history. Parent Issue #7 then had 19 handwritten locations remaining.
 
-[Issue #27](https://github.com/Special-Rapid/go.snkisk.com/issues/27)の `create-form-dynamic-locale.ts` は初回実行時がenなら5文言の翻訳を開始し、その後は言語を再判定しません。初回RAFは全text Nodeを収集してから変換し、characterDataと追加textはそのNodeだけを直接変換します。追加Elementは配下を走査します。前の用語翻訳で行う「追加textの親を再走査」とは別の既存契約です。除外tag・空白・childList/subtree/characterData監視と挿入順を維持します。
+### Entry expiry supplementary translation source
 
-辞書の欠落値、変換/走査引数とNode配列の4型注釈でstrict検査し、型の強制変換は使いません。現在の固定生成は8正本、追加生成先は `src/create-form-dynamic-locale-script.ts`、従来7生成物は同byteです。前段の件数は導入履歴で、親Issue #7の残作業は手書き20箇所です。
+The `entry-expiry-locale.ts` source from [Issue #31](https://github.com/Special-Rapid/go.snkisk.com/issues/31) starts for initial `en`, without rechecking language. Text first checks parent/ancestor `[data-no-i18n]` and excluded tags, then collects all text before whitespace-preserving conversion. Subsequent placeholder traversal covers only descendants, excluding the root, and retains the existing contract of not applying text exclusion conditions. Body at RAF time, direct characterData/added text conversion, added Element traversal, and absence of attributes observation are preserved.
 
+Only four annotations for missing dictionary values, conversion Node, traversal Element, and Node arrays are added under strict checking. Generation then covered ten sources, adding `src/entry-expiry-locale-script.ts`; the nine previous outputs remained byte-identical. Earlier counts are history. Parent Issue #7 then had 18 handwritten locations remaining.
 
-### ホーム補助翻訳のstrict TypeScript正本
+### Completion and management supplementary translation
 
-[Issue #29](https://github.com/Special-Rapid/go.snkisk.com/issues/29)の `home-polish-locale.ts` は初回enで補助3文言の翻訳を開始し、後続は言語を再判定しません。親または祖先の `[data-no-i18n]` を除外し、除外tagと空白を保ちます。RAFは実行時点のbodyから全text Nodeを収集後に変換します。characterDataと追加textは対象だけを直接変換し、追加Elementは配下を走査します。
+`browser/completion-locale.ts` is the strict source for the eleventh fixed output `src/completion-locale-script.ts`, embedded in shared pages. It starts only for initial `en`, without reassessing later language changes. Text parent/ancestor data-no-i18n exclusions, excluded tags, whitespace, body at RAF time, collecting all text before conversion, direct characterData/added text conversion, and added Element traversal are preserved. Among the 12 dictionary labels, `期限: ` has trailing whitespace in its key, preserving the existing failure to match lookup after trimming. Only four type annotations are added, preserving the previous ten outputs' bytes, three observation options, and insertion order.
 
-辞書欠落値・変換/走査引数・Node配列の4型注釈だけを使い、型の強制変換はありません。固定生成は9正本、追加先は `src/home-polish-locale-script.ts`、従来8生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は19箇所です。
+### Translation of 45 creation form labels
 
-### 入口期限の補助翻訳をstrict正本へ移行
+`browser/create-form-locale.ts` is the strict source for the twelfth fixed output `src/create-form-locale-script.ts`. It starts only for initial `en` and checks language on every convert. After starting in English, it skips conversion while not `en`, then converts on notifications after returning to `en`. SCRIPT/STYLE/TEXTAREA are excluded; OPTION is translated. It retains the contract of not adding data-no-i18n ancestor exclusions. Whitespace, body at RAF time, collecting all Text before conversion, direct characterData/added Text conversion, added Element traversal, three observation options, and insertion order are preserved. Only four type annotations are added; the previous eleven outputs remain byte-identical.
 
-[Issue #31](https://github.com/Special-Rapid/go.snkisk.com/issues/31)の `entry-expiry-locale.ts` は初回enで開始し、後続は言語を再判定しません。textは親/祖先の `[data-no-i18n]` と除外tagを先に判定し、全収集後に空白を保って変換します。その後のplaceholder走査はroot自身を含まない子孫だけを対象とし、textの除外条件を使わない既存契約です。RAF時点body、characterDataと追加textの直接変換、追加Element走査、attributes監視なしを維持します。
+### Validation translation and date formatting
 
-辞書欠落値・変換Node・走査Element・Node配列の4型注釈だけでstrict検査します。固定生成は10正本、追加先は `src/entry-expiry-locale-script.ts`、従来9生成物は同byteです。前段件数は履歴で、親Issue #7の手書き残作業は18箇所です。
+[Issue #37](https://github.com/Special-Rapid/go.snkisk.com/issues/37) uses strict `browser/validation-locale.ts` for the thirteenth fixed output `src/validation-locale-script.ts` at the same position. It preserves 22 fixed labels, four regular expressions, captures, whitespace, parent/ancestor data-no-i18n, and four excluded tags. It starts only for initial `en`, without rechecking later language. Date formatting follows collection/conversion of all Text from the body at RAF time; direct characterData/added Text conversion and added Element traversal do not format dates. Date NaN checks, Intl zone/shortOffset/dateStyle/timeStyle, three observation options, and order are preserved. Only annotations for missing dictionary values, string arguments, Node/Node arrays, and the HTMLElement type argument for the existing HTML time querySelectorAll are added. There are no type assertions; the previous twelve outputs remain byte-identical. Earlier counts are history. Parent #7 then had 15 handwritten locations remaining.
 
-### 完了・管理文言の補助翻訳
+### Condition card controls
 
-`browser/completion-locale.ts` をstrict正本とし、固定11生成の `src/completion-locale-script.ts` を共通ページへ埋め込みます。初回enだけで開始し、後続の言語変更は再判定しません。textの親・祖先 `data-no-i18n` と除外tag、空白保持、RAF時点body、全text収集後変換、characterData/追加textの直接変換と追加Element走査を維持します。辞書12文言のうち `期限: ` は末尾空白を含むkeyであり、trim後のlookupでは一致しない既存挙動を保持します。4型注釈だけを追加し、旧10生成物のbyteと監視3項目・挿入順を保ちます。
+[Issue #39](https://github.com/Special-Rapid/go.snkisk.com/issues/39) uses strict `browser/condition-card.ts` for the fourteenth fixed output `src/condition-card-script.ts` at the same position. It preserves toggle-driven visibility, control disabled states, limit redirect settings, form synchronization events, hash decoding/membership checks/details expansion/RAF scroll, and period customValidity/required/checkValidity/reportValidity at submit. Period input/change clears customValidity. Only two type argument locations are added: input/select/textarea union for control enumeration, and input types for the two period IDs. No type assertions are used; the previous thirteen outputs remain byte-identical. Earlier counts are history. Parent #7 then had 14 handwritten locations remaining.
 
-### 作成フォーム45文言の翻訳
+### Creation form state management
 
-`browser/create-form-locale.ts` をstrict正本とし、固定12生成の `src/create-form-locale-script.ts` を埋め込みます。初回enだけ開始し、各convertでもlangを再判定します。en開始後の非en中は変換せず、enへ戻った通知では変換します。SCRIPT/STYLE/TEXTAREAの3tagを除外し、OPTIONは変換します。data-no-i18n祖先除外を追加しない既存契約です。空白保持、RAF時点body、全Text収集後変換、characterData/追加Text直接変換と追加Element走査、監視3項目と挿入順を維持します。4型注釈だけを追加し、旧11生成物のbyteを保持します。
+[Issue #41](https://github.com/Special-Rapid/go.snkisk.com/issues/41) uses strict `browser/create-state.ts` for the fifteenth fixed output `src/create-state-script.ts` at the same position. It preserves initial setTimeout(0), studio/form type guards, URL validation display in the current language, Turnstile success/expired/error state synchronization, deferred input/change synchronization, and label/slug customValidity when audience is enabled. Only three optional callbacks on shared Window and a string annotation for name are added, without type assertions. The previous fourteen outputs remain byte-identical. Earlier counts are history. Parent #7 then had 13 handwritten locations remaining.
 
-### 入力検証翻訳と日時整形
+### Conditional form synchronization
 
-[Issue #37](https://github.com/Special-Rapid/go.snkisk.com/issues/37)の `browser/validation-locale.ts` をstrict正本とし、固定13生成の `src/validation-locale-script.ts` を同位置へ埋め込みます。22固定文言と4正規表現、捕捉値・空白・親/祖先data-no-i18n・除外4tagを保持します。初回enだけ開始し、後続の言語は再判定しません。RAF時点bodyの全Text収集後変換に続いて日時を整形し、characterData/追加Text直接変換と追加Element走査では日時を整形しません。DateのNaN判定とIntlのzone/shortOffset/dateStyle/timeStyle、監視3項目と順序を維持します。辞書欠落値・string引数・Node/Node配列と、既存HTML time要素向けquerySelectorAllのHTMLElement型引数だけを追加します。型の強制変換はなく、旧12生成物のbyteを保ちます。前段の件数は履歴で、親 #7の手書き残作業は15箇所です。
+[Issue #43](https://github.com/Special-Rapid/go.snkisk.com/issues/43) uses strict `browser/condition-form-sync.ts` for the sixteenth fixed output `src/condition-form-sync-script.ts` at the same position. It preserves existing Japanese text for disabled conditions, the social preview fieldset/notice controlled by switching settings, immediate input/change/conditioncardsync synchronization, submit registration after a microtask, and removal of disabled datetime inputs and same-name hidden inputs. Only four string annotations and one type argument for the current HTML datetime input are added, without type assertions. The previous fifteen outputs remain byte-identical. Earlier counts are history. Parent #7 then had 12 handwritten locations remaining.
 
-### 条件カードの制御
+### Setting descriptions and info controls
 
-[Issue #39](https://github.com/Special-Rapid/go.snkisk.com/issues/39)の `browser/condition-card.ts` をstrict正本とし、固定14生成の `src/condition-card-script.ts` を同位置へ埋め込みます。toggleによる表示・control disabled・上限転送設定・form同期event、hashのdecode/所属確認/details展開/RAFscroll、submit時の期間customValidity・required・checkValidity/reportValidityを維持します。期間input/changeはcustomValidityを解除します。control列挙のinput/select/textarea unionと期間2IDのinputに型引数2箇所だけを付け、型の強制変換は使いません。旧13生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は14箇所です。
+[Issue #45](https://github.com/Special-Rapid/go.snkisk.com/issues/45) uses strict `browser/setting-info.ts` for the seventeenth fixed output `src/setting-info-script.ts` at the same position. It preserves headings/states/descriptions in the current language, info click/focus/blur/hover, retaining visibility on leave while focused, details expansion for hashes/input errors, and load/localechange/toggle synchronization order. Only the dictionary type and four button/tooltip/value annotations are added, preserving undefined for unknown keys and the previous sixteen outputs' bytes. Earlier counts are history. Parent #7 then had 11 handwritten locations remaining.
 
-### 作成フォームの状態管理
+### Supplementary translation after language switching
 
-[Issue #41](https://github.com/Special-Rapid/go.snkisk.com/issues/41)の `browser/create-state.ts` をstrict正本とし、固定15生成の `src/create-state-script.ts` を同位置へ埋め込みます。初回setTimeout(0)、studio/form型guard、現在言語でのURL検証表示、Turnstile success/expired/errorの状態同期、input/changeの遅延同期、audience有効時のlabel/slug customValidityを維持します。共有Windowのoptional callback3宣言とnameのstring注釈だけを追加し、型の強制変換は使いません。旧14生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は13箇所です。
+[Issue #47](https://github.com/Special-Rapid/go.snkisk.com/issues/47) uses strict `browser/localization-after.ts` for the eighteenth fixed output `src/localization-after-script.ts` at the same position. Existing string dictionary registration and two translation callbacks are optional, preserving fallback when absent, registration of 19 labels, RAF traversal/excluded tags, datetime zone, title suffix, timers after input/change, and locale notification order. A unique marker is replaced with fixed `SERVICE_HOST`, adding no external input path. The previous seventeen outputs remain byte-identical; earlier counts are history. Parent #7 then had ten handwritten locations remaining.
 
-### 条件フォームの同期
+### Query setup guidance translation
 
-[Issue #43](https://github.com/Special-Rapid/go.snkisk.com/issues/43)の `browser/condition-form-sync.ts` をstrict正本とし、固定16生成の `src/condition-form-sync-script.ts` を同位置へ埋め込みます。無効条件の既存日本語表示、切替設定によるSNSプレビューfieldsetとnotice、input/change/conditioncardsyncの即時同期、microtask後のsubmit登録と無効日時inputと同名hiddenの除去を維持します。string注釈4と現HTMLの日時inputに型引数1だけを追加し、型の強制変換は使いません。旧15生成物のbyteを保持します。前段件数は履歴で、親 #7の手書き残作業は12箇所です。
+[Issue #49](https://github.com/Special-Rapid/go.snkisk.com/issues/49) uses strict `browser/docs-query.ts` for the nineteenth fixed output `src/docs-query-script.ts` at the same position. It preserves ja/en dictionaries, undefined for unknown keys, labels/title based on current lang, locale notifications, and DOMContentLoaded once order. Current HTML has eight `data-docs-copy` elements; not all 15 dictionary entries are assumed present in the DOM. Existing `escapeHtml(docsOrigin)` is restored by replacing a unique marker with a callback, preserving replacement special characters literally. The previous eighteen outputs remain byte-identical; earlier counts are history. Parent #7 then had nine handwritten locations remaining.
 
-### 設定説明とinfo開閉
+### Unused supplementary translation definition
 
-[Issue #45](https://github.com/Special-Rapid/go.snkisk.com/issues/45)の `browser/setting-info.ts` をstrict正本とし、固定17生成の `src/setting-info-script.ts` を同位置へ埋め込みます。現在言語での見出し・状態・説明、infoのclick/focus/blur/hover、focus中leaveの維持、hashと入力エラーによるdetails展開、load/localechange/toggle同期の順序を保ちます。辞書の型とbutton/tooltip/valueの4注釈だけを追加し、未知keyのundefinedと旧16生成byteを保持します。前段件数は履歴で、親 #7の手書き残作業は11箇所です。
+[Issue #51](https://github.com/Special-Rapid/go.snkisk.com/issues/51) uses strict `browser/localization-polish.ts`, restoring the existing definition from the twentieth fixed output `src/localization-polish-script.ts`. Current `localizationPolishScript` is defined but not inserted into HTML. No call/embedding is added and the definition is not deleted. Initial `en` detection, 19 labels, whitespace, excluded tags, zone/title, optional translation callbacks, MutationObserver processing, and exceptions are preserved. Fixed `SERVICE_HOST` interpolation is restored through a unique marker; the previous nineteen outputs' bytes and complete Worker HTML are preserved. Earlier counts are history. Parent #7 then had eight handwritten locations remaining.
 
-### 言語切替後の補助翻訳
+### Shared translation behavior
 
-[Issue #47](https://github.com/Special-Rapid/go.snkisk.com/issues/47)の `browser/localization-after.ts` をstrict正本とし、固定18生成の `src/localization-after-script.ts` を同位置へ埋め込みます。既存の文字列辞書登録・文字列翻訳callback2つをoptionalとして表し、不在時のfallback、19文言の辞書登録、RAF走査と除外tag、日時zone、title suffix、input/change後のtimer、locale通知の順序を保ちます。生成scriptの一意markerを現在の固定 `SERVICE_HOST` で置換し、外部入力の新経路は作りません。旧17生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は10箇所です。
+[Issue #53](https://github.com/Special-Rapid/go.snkisk.com/issues/53) uses strict `browser/localization-core.ts` for the twenty-first fixed output `src/localization-core-script.ts` at the same shared layout position. Saved ja/en values take priority over the OS; otherwise existing OS detection chooses ja if any ja candidate exists, or en otherwise. Manual selection persistence, removal for auto, text/placeholder/alt dictionaries, observer disconnect/reconnect, and locale notification order are unchanged. Only type annotations are added, preserving existing prototype-key exceptions and zone labels without mixing behavior improvements into this stage. The previous twenty outputs remain byte-identical; earlier counts are history. Parent #7 then had seven handwritten locations remaining.
 
-### クエリー設定案内の補助翻訳
+## Typed query preset source
 
-[Issue #49](https://github.com/Special-Rapid/go.snkisk.com/issues/49)の `browser/docs-query.ts` をstrict正本とし、固定19生成の `src/docs-query-script.ts` を同位置へ埋め込みます。ja/enの辞書と未知keyのundefined、現在のlangによる文言とtitle、locale通知、DOMContentLoaded onceの順序を保ちます。現HTMLの `data-docs-copy` は8要素で、辞書の15項目すべてがDOMにあるとは扱いません。既存 `escapeHtml(docsOrigin)` は一意markerをcallbackで置換し、replacement特殊文字をそのまま保ちます。旧18生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は9箇所です。
+[Issue #55](https://github.com/Special-Rapid/go.snkisk.com/issues/55) uses editable `browser/create-query-preset.ts` for creation form query presets, with fixed `src/create-query-preset-script.ts` at the same position. Generation then covered 22 targets. Allowed parameters/value validation, condition toggles, notification order, and exclusion of `restore=1` were preserved. Six remaining handwritten locations, production delivery, and browser verification were separate work at that stage.
 
-### 未使用の補助翻訳定義
+## Typed English rule summary source
 
-[Issue #51](https://github.com/Special-Rapid/go.snkisk.com/issues/51)の `browser/localization-polish.ts` をstrict正本とし、固定20生成の `src/localization-polish-script.ts` から既存定義を復元します。現在の `localizationPolishScript` は定義のみでHTMLへ挿入されていません。呼出し・埋込の追加や定義の削除は行わず、初期en判定、19文言、空白、除外tag、zone/title、optional翻訳callback、MutationObserver処理と例外を保持します。固定 `SERVICE_HOST` の補間は一意markerで復元し、旧19生成byteと完成Worker HTML全文を維持します。前段件数は履歴です。親 #7の手書き残作業は8箇所です。
+[Issue #57](https://github.com/Special-Rapid/go.snkisk.com/issues/57) uses editable `browser/create-rule-locale.ts` for English rule summary synchronization, with fixed `src/create-rule-locale-script.ts` at the original position. Generation then covered 23 targets. The `en` check at timer execution, expiry/count/switch labels, input/change resynchronization, DOM read counts, and existing exceptions were preserved. Type syntax on repeated reads is erased at runtime and does not add input validation. Five remaining handwritten locations, browser verification, and production delivery were separate work at that stage.
 
-### 共有翻訳処理
+## Typed theme behavior source
 
-[Issue #53](https://github.com/Special-Rapid/go.snkisk.com/issues/53)の `browser/localization-core.ts` をstrict正本とし、固定21生成の `src/localization-core-script.ts` を既存の共有layoutへ同じ位置で埋め込みます。保存済みja/enをOSより優先し、それ以外は既存のOS判定（ja候補があればja、それ以外en）を保持します。manual選択の保存、auto時の削除、text・placeholder・altの辞書、observerの停止と再接続、locale通知の順序を変えません。型注釈だけで既存のprototype key例外やzone文言も保持し、今回に挙動改善を混ぜません。旧20生成byteを維持し、前段件数は履歴です。親 #7の手書き残作業は7箇所です。
+[Issue #59](https://github.com/Special-Rapid/go.snkisk.com/issues/59) uses editable `browser/theme-controls.ts` for shared layout theme behavior, with fixed `src/theme-controls-script.ts` at the original position. Generation then covered 24 targets. System/Light/Dark, OS tracking, manual persistence, localized labels, menu closing/summary focus, legacy listeners, dataset read counts, and existing exceptions were preserved. UI theme selection is passed to existing radio controls. Erased generic/non-null syntax does not add runtime validation. Four remaining handwritten locations, browser verification, and production delivery were separate work at that stage.
 
-## クエリー初期値処理の型付き正本
+## Typed language/theme selection source
 
-[Issue #55](https://github.com/Special-Rapid/go.snkisk.com/issues/55)の作成フォームのクエリー初期値処理は `browser/create-query-preset.ts` を編集し、固定生成の `src/create-query-preset-script.ts` を同じ場所へ埋め込みます。生成対象は22件です。許可パラメーター・値の検証、条件切替、通知順、`restore=1` の除外を維持します。手書きJSの残作業6箇所と、本番反映・実ブラウザー確認は別の作業です。
+[Issue #61](https://github.com/Special-Rapid/go.snkisk.com/issues/61) uses editable `browser/locale-picker.ts` for shared layout selection buttons, with fixed `src/locale-picker-script.ts` retaining existing HTML/CSS and insertion order. Generation then covered 25 targets. click/arrow keys/Home/End/RAF focus, theme radio connections, language callback/select fallback, OS tracking, observer/meta synchronization, saved values, repeated reads, unknown/prototype values, and existing exceptions were preserved. One erased non-null annotation and a callback argument type do not add runtime validation. Three remaining handwritten locations, browser verification, and production delivery were separate work at that stage.
 
-## 条件概要の英語同期の型付き正本
+## Typed form recovery source
 
-[Issue #57](https://github.com/Special-Rapid/go.snkisk.com/issues/57)の条件概要の英語同期は `browser/create-rule-locale.ts` を編集し、固定生成 `src/create-rule-locale-script.ts` を従来の位置へ埋め込みます。生成対象は23件です。timer実行時のen判定、期限・回数・切替の文言、input/change後の再同期、DOMの読み取り回数と既存例外を維持します。繰り返し取得の型構文は実行時に消去され、新しい入力検証ではありません。手書き残5箇所と実ブラウザー確認・本番反映は別作業です。
+[Issue #63](https://github.com/Special-Rapid/go.snkisk.com/issues/63) uses editable `browser/create-form-recovery.ts` for creation form persistence/recovery, with fixed `src/create-form-recovery-script.ts` at the original position. Generation then covered 26 targets. Submit listener/restore order, sessionStorage exclusions, existing recovery/exceptions, each control/toggle, form events, and error focus calls were preserved. JSON.parse-derived annotations describe an unvalidated producer contract, without adding runtime validation. Invalid values, inherited keys, repeated reads, and partial exceptions retain their behavior. Two remaining handwritten locations, browser verification, and production delivery were separate work at that stage.
 
-## テーマ処理の型付き正本
+## Typed extension communication source
 
-[Issue #59](https://github.com/Special-Rapid/go.snkisk.com/issues/59)の共有layoutのテーマ処理は `browser/theme-controls.ts` を編集し、固定生成 `src/theme-controls-script.ts` を従来の位置へ埋め込みます。生成対象は24件です。System/Light/Dark、OS変更追従、手動保存、言語別ラベル、menu閉じとsummary focus、legacy listener、datasetの読み取り回数と既存例外を維持します。画面上のテーマ選択は既存radioへ渡されます。消去される型generic/non-null構文は新しい実行時検証ではありません。手書き残4箇所、実ブラウザー確認、本番反映は別作業です。
+[Issue #65](https://github.com/Special-Rapid/go.snkisk.com/issues/65) uses editable `browser/extension-create.ts` for the bridge, with fixed `src/extension-create-script.ts` at the existing position. Generation then covered 27 targets. Only existing trusted origin constants are replaced with JSON strings. Origin/parent window/popup source checks, reading targetUrl twice, ready/error/token notifications, and Turnstile callback order were preserved. MessageEvent data types describe an unvalidated producer contract, without adding a runtime validator. Invalid values, repeated getters, partial exceptions, and the existing empty-string token condition retain their behavior. One remaining handwritten unit, real Chrome/Turnstile verification, and production delivery were separate work at that stage.
 
-## 言語・テーマ選択ボタンの型付き正本
+## Typed shared layout tail source
 
-[Issue #61](https://github.com/Special-Rapid/go.snkisk.com/issues/61)の共有layoutの選択ボタン処理は `browser/locale-picker.ts` を編集し、固定生成 `src/locale-picker-script.ts` を従来のHTML/CSS・挿入順で埋め込みます。生成対象は25件です。click・方向キー/Home/End・RAF focus、テーマradio接続、言語callback/select fallback、OS追従・observer・meta同期、保存値、再取得・未知key/prototype値・既存例外を維持します。消去されるnon-null1とcallback引数型は新しい実行時検証ではありません。手書き残3箇所、実ブラウザー確認、本番反映は別作業です。
+[Issue #67](https://github.com/Special-Rapid/go.snkisk.com/issues/67) uses editable `browser/layout-tail.ts` for all 12 shared layout tail statements, with fixed `src/layout-tail-script.ts` at the original position. Generation covers 28 targets. Copying, passphrase display, slug checks, local time, usage count, condition toggles, social previews, form summary order, and existing exceptions are preserved. JSON response types describe an unvalidated producer contract, without adding a runtime validator. Shared host constants use a unique marker/callback replacement. The previous 27 outputs remained byte-identical; this stage reduced remaining handwritten migration units to zero. Browser verification, stacked PR integration, and production delivery were separate work at that stage.
 
-## フォーム復元処理の型付き正本
 
-[Issue #63](https://github.com/Special-Rapid/go.snkisk.com/issues/63)の作成フォーム保存・復元は `browser/create-form-recovery.ts` を編集し、固定生成 `src/create-form-recovery-script.ts` を従来の位置へ埋め込みます。生成対象は26件です。submit listenerとrestoreの順序、sessionStorageの保存除外・既存復元・例外、各controlとtoggle、formイベントとerror focus呼出しを維持します。JSON.parse由来の型注釈は未検証のproducer契約で、新しい実行時検証ではありません。異常値・継承key・繰り返し取得・途中例外の挙動も保ちます。手書き残2箇所、実ブラウザー確認、本番反映は別作業です。
+## License
 
-## 拡張機能との通信処理の型付き正本
-
-[Issue #65](https://github.com/Special-Rapid/go.snkisk.com/issues/65)のbridgeは `browser/extension-create.ts` を編集し、固定生成 `src/extension-create-script.ts` を既存位置へ埋め込みます。生成対象は27件です。既存のtrusted origin定数だけをJSON文字列へ置換し、origin・親window・popup sourceの照合、targetUrlの二回取得、ready/error/token通知とTurnstile callbackの順序を維持します。MessageEventのdata型は未検証のproducer契約で、実行時validatorを追加しません。異常値・繰り返しgetter・部分例外と空string tokenの既存条件も保ちます。手書き残1単位、実Chrome/Turnstile確認、本番反映は別作業です。
-
-## 共有layout末尾の型付き正本
-
-[Issue #67](https://github.com/Special-Rapid/go.snkisk.com/issues/67)の共有layout末尾の全12文は `browser/layout-tail.ts` を編集し、固定生成 `src/layout-tail-script.ts` を従来の位置へ埋め込みます。生成対象は28件です。コピー・合言葉表示・slug確認・現地時刻・利用回数・条件切替・SNSプレビュー・フォーム概要の順序と既存例外を維持します。JSONレスポンスの型は未検証のproducer契約で、実行時validatorを追加しません。共有host定数は一意markerをcallbackで置換します。旧27生成byteを保持し、このDraftで手書きJS移行の残単位は0です。実ブラウザー確認・積み重ねたPRの統合・本番反映は別作業です。
+This project is licensed under the [MIT License](LICENSE), copyright (c) 2026 Special-Rapid. Third-party dependencies retain their own licenses and notices.
