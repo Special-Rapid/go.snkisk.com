@@ -2,7 +2,7 @@
 
 # sinkaisoku.com / go.snkisk.com
 
-`sinkaisoku.com`と`go.snkisk.com`で同じ短縮パスを扱う、条件付き短縮 URL サービスのソースコードです。
+`sinkaisoku.com`と`go.snkisk.com`で同じ短縮パスを扱う条件付き短縮 URL サービスのソースコードです。
 
 ## 現在の構成と履歴の読み方
 
@@ -75,7 +75,7 @@ npm test
 
 ## 公開前リンクのブラウザー処理
 
-公開時刻後の自動遷移は [browser/README.md](browser/README.md) に編集元と生成契約を記載しています。`npm run typecheck` はこの1つのブラウザー処理もstrict検査し、`npm run build:locked-page` でWorkerへ埋め込むstringを生成、`npm run check:locked-page` で一致を確認します。Chrome拡張の生成とは別の入力・生成先です。公開前リンク画面の表示と操作を維持し、他のインラインJSは親Issue #7の後続移行に残します。
+公開時刻後の自動遷移の編集元と生成契約は [browser/README.md](browser/README.md) に記載しています。`npm run typecheck` はこの1つのブラウザー処理もstrict検査し、`npm run build:locked-page` でWorkerへ埋め込むstringを生成、`npm run check:locked-page` で一致を確認します。Chrome拡張の生成とは別の入力・生成先です。公開前リンク画面の表示と操作を維持し、他のインラインJSは親Issue #7の後続移行に残します。
 
 
 ### 作成画面のプレビューラベルの型移行
