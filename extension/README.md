@@ -1,8 +1,8 @@
-# Chrome拡張機能
+# Chrome extension
 
-popupの編集元は `popup.ts`、使用するChrome APIの型は `chrome.d.ts` です。Chromeが直接読む `popup.js` は生成物としてGitで追跡します。manifest・HTML・CSSとあわせ、このフォルダを開発用拡張機能として読み込めます。
+The popup's editable source is `popup.ts`; `chrome.d.ts` defines the Chrome API types it uses. Chrome reads `popup.js` directly, so this generated file is tracked in Git. Together with the manifest, HTML, and CSS, this directory can be loaded as an unpacked development extension.
 
-Node.js 22.18以降でルートから実行します。
+Run from the repository root with Node.js 22.18 or later:
 
 ```sh
 npm ci
@@ -11,8 +11,8 @@ npm run build:extension
 npm run check:extension
 ```
 
-`build:extension` は専用compiler設定で一時ディレクトリへ生成してから `popup.js` を更新します。`check:extension` は同じ生成結果とのbyte一致を検査し、差があれば失敗します。sourceと生成物は同じcommitに含め、生成物を直接編集しないでください。CIでも一致を検査します。
+`build:extension` generates output in a temporary directory using the dedicated compiler configuration, then updates `popup.js`. `check:extension` checks byte-for-byte equality with the same generated output and fails if it differs. Include source and generated output in the same commit; do not edit generated output directly. CI also checks for a match.
 
-popupは既存のbridgeメッセージ検査、短縮URL作成、locale/theme保存、QR保存の動作を維持します。型定義は使用中のAPI契約を表し、manifestの権限を追加しません。
+The popup preserves existing bridge message validation, short URL creation, locale/theme persistence, and QR saving. The type declarations describe the APIs in use; they do not add manifest permissions.
 
-作業記録と状態表は既存の非公開ローカル `docs/` に保存します。このREADMEは公開する編集元・生成手順の契約を扱い、作業記録本体を公開配布へ含めません。
+Work records and state matrices remain in the existing private local `docs/`. This README documents the public editing and generation contract; the work records themselves are not included in public distribution.
