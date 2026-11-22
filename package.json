@@ -23,10 +23,15 @@
     "@types/node": "^22.20.5",
     "miniflare": "5.20261006.1-alpha",
     "typescript": "^5.0.0",
-    "wrangler": "4.149.0"
+    "wrangler": "4.156.0"
   },
   "dependencies": {
     "jose": "^6.2.9",
     "qrcode-generator": "2.0.4"
+  },
+  "overrides": {
+    "miniflare": {
+      "undici": "7.30.1"
+    }
   }
 }
