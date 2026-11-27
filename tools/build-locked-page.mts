@@ -18,6 +18,7 @@ if (parsed.errors.length) throw new Error(ts.formatDiagnosticsWithColorAndContex
 }));
 const entries = [
   { source: "locked-page-auto-open", target: "locked-page-script", symbol: "lockedPageScript" },
+  { source: "admin-filter", target: "admin-filter-script", symbol: "adminFilterCode" },
   { source: "create-preview-label", target: "create-preview-label-script", symbol: "createPreviewLabelScript" },
   { source: "create-service-guide-locale", target: "create-service-guide-locale-script", symbol: "createServiceGuideLocaleScript" },
   { source: "create-rule-heading-locale", target: "create-rule-heading-locale-script", symbol: "createRuleHeadingLocaleCode" },
