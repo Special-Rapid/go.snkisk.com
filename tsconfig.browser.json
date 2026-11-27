@@ -16,6 +16,7 @@
   },
   "files": [
     "browser/locked-page-auto-open.ts",
+    "browser/admin-filter.ts",
     "browser/create-preview-label.ts",
     "browser/create-service-guide-locale.ts",
     "browser/create-rule-heading-locale.ts",
